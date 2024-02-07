@@ -1,0 +1,16 @@
+[package]
+name = "robotic_ai_prypiat"
+version = "0.1.0"
+edition = "2021"
+keywords = ["robotics", "ai", "unitn", "advanced_programming", "rust"]
+
+[dependencies]
+robotics_lib = { registry = "kellnr" }
+bob_lib = { registry = "kellnr" }
+spyglass = { registry = "kellnr" }
+sense_and_find_by_Rusafariani = { registry = "kellnr" }
+who_needs_gv_street_explorer = { registry = "kellnr" }
+oxagworldgenerator = { registry = "kellnr" }
+
+# map viewer
+sdl2 = "0.36.0"
