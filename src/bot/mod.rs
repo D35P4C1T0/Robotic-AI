@@ -1,12 +1,14 @@
 use robotics_lib::energy::Energy;
 use robotics_lib::event::events::Event;
-use robotics_lib::interface::{debug, destroy, go, one_direction_view, put, robot_view, Direction};
-use robotics_lib::runner::backpack::BackPack;
+use robotics_lib::interface::debug;
 use robotics_lib::runner::{Robot, Runnable};
+use robotics_lib::runner::backpack::BackPack;
 use robotics_lib::world::coordinates::Coordinate;
+use robotics_lib::world::tile::Content;
 use robotics_lib::world::World;
 
 use crate::utils::render_world;
+use crate::utils::spytrash::get_nearby_content;
 
 // Each bin can handle max 10 of garbage.
 
@@ -20,14 +22,37 @@ pub(crate) enum ThumbotState {
     Done,
 }
 
-pub(crate) struct Thumbot(pub(crate) Robot, pub(crate) ThumbotState);
+pub(crate) struct Thumbot(
+    pub(crate) Robot, // robot
+    pub(crate) ThumbotState, // state
+    pub(crate) usize, // world size
+    pub(crate) Vec<(usize, usize)>, // bins locations
+    pub(crate) Vec<(usize, usize)>, // garbage locations
+    // pub(crate) Lssf,                // lssf
+);
 
 impl Thumbot {
-    pub(crate) fn new() -> Self {
-        Thumbot(Robot::new(), ThumbotState::Start)
+    pub(crate) fn new(
+        robot: Robot,
+        state: ThumbotState,
+        world_size: usize,
+        bins_locations: Vec<(usize, usize)>,
+        garbage_locations: Vec<(usize, usize)>,
+        // lssf: Lssf,
+    ) -> Self {
+        Thumbot(robot, state, world_size, bins_locations, garbage_locations)
     }
 
-    // fn state_machine_next_state(&mut self) {
+    // pub(crate) fn update_lssf_map(&mut self, world: &mut World) -> Result<(), LibError> {
+    //     self.5.smart_sensing_centered(self.2, world, self, (self.2)-1)
+    // }
+
+
+    // pub(crate) fn new() -> Self {
+    //     Thumbot(Robot::new(), ThumbotState::Start,)
+    // }
+
+    // fn state_machine_next_state(&mut self, world: &mut World) {
     //     match self.1 {
     //         ThumbotState::Start => {
     //             // do the big scan for trash and bins
@@ -83,12 +108,30 @@ impl Thumbot {
 
 impl Runnable for Thumbot {
     fn process_tick(&mut self, world: &mut World) {
-        for _ in 0..6 {
-            go(self, world, Direction::Up).unwrap();
+        let garbage_locations = get_nearby_content(self, world, self.2, Content::Garbage(0));
+        match garbage_locations {
+            Ok(garbage_vec) => {
+                self.4 = garbage_vec.clone();
+                println!("Garbage locations: {:?}", garbage_vec);
+            }
+            Err(e) => {
+                println!("Error: {}", e);
+            }
         }
-        for _ in 0..1 {
-            go(self, world, Direction::Right).unwrap();
+
+        let bins_locations = get_nearby_content(self, world, self.2, Content::Bin(0..1));
+        match bins_locations {
+            Ok(bins_vec) => {
+                self.3 = bins_vec.clone();
+                println!("Bins locations: {:?}", bins_vec);
+            }
+            Err(e) => {
+                println!("Error: {}", e);
+            }
         }
+
+        // let map_update_res = self.update_lssf_map(world);
+        // println!("Map update result: {:?}", map_update_res);
 
         while self.get_energy().get_energy_level() > 0 {
             let debug_view = debug(self, world);
@@ -96,22 +139,22 @@ impl Runnable for Thumbot {
             let robot_pos = debug_view.2;
             render_world(robot_pos, map.clone());
 
-            let robot_view = one_direction_view(self, world, Direction::Left, 6);
-            println!("Robot view: {:?}", robot_view);
+            // let robot_view = one_direction_view(self, world, Direction::Left, 6);
+            // println!("Robot view: {:?}", robot_view);
 
-            if destroy(self, world, Direction::Right).is_ok() {
-                println!("Destroyed something");
-                println!("{:?}", self.get_backpack());
-            } else {
-                println!("Nothing to destroy");
-            }
+            // if destroy(self, world, Direction::Right).is_ok() {
+            //     println!("Destroyed something");
+            //     println!("{:?}", self.get_backpack());
+            // } else {
+            //     println!("Nothing to destroy");
+            // }
 
             println!("Energy level: {}", self.get_energy().get_energy_level());
             println!("bot pos: {:?}", self.get_coordinate());
         }
     }
 
-    fn handle_event(&mut self, event: Event) {
+    fn handle_event(&mut self, _event: Event) {
         // react to this event in your GUI
     }
     fn get_energy(&self) -> &Energy {

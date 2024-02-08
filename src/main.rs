@@ -1,8 +1,9 @@
 use oxagworldgenerator::world_generator::content_options::OxAgContentOptions;
 use oxagworldgenerator::world_generator::world_generator_builder::OxAgWorldGeneratorBuilder;
 use oxagworldgenerator::world_generator::OxAgWorldGenerator;
-use robotics_lib::runner::{Runnable, Runner};
+use robotics_lib::runner::{Robot, Runner};
 use robotics_lib::world::tile::Content;
+use sense_and_find_by_Rusafariani::Lssf;
 
 use crate::bot::ThumbotState;
 
@@ -10,7 +11,20 @@ mod bot;
 mod utils;
 
 fn main() {
-    let robot = bot::Thumbot(Default::default(), ThumbotState::Start);
+    const WORLD_SIZE: usize = 50;
+
+    let lssf = Lssf::new();
+    let robot = bot::Thumbot::new(
+        Robot::default(),  // Robot
+        ThumbotState::Start, // ThumbotState
+        WORLD_SIZE,          // world size
+        vec![],              // bins locations
+        vec![],              // garbage locations
+    );
+
+
+
+    // World generation
 
     let content_vec = vec![
         (
@@ -42,10 +56,12 @@ fn main() {
     let mut generator: OxAgWorldGenerator = OxAgWorldGeneratorBuilder::new()
         .set_content_options(content_vec)
         .unwrap()
-        .set_size(50)
-        .set_seed(1234)
+        .set_size(WORLD_SIZE)
+        .set_seed(3456)
         .build()
         .unwrap();
+
+    // World generation end
 
     let run = Runner::new(Box::new(robot), &mut generator);
 

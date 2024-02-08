@@ -1,3 +1,6 @@
+pub(crate) mod spytrash;
+pub(crate) mod travel;
+
 use robotics_lib::world::tile::{Content, Tile, TileType};
 use sdl2::render::Canvas;
 use sdl2::video::Window;
