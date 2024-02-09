@@ -1,28 +1,16 @@
 use oxagworldgenerator::world_generator::content_options::OxAgContentOptions;
 use oxagworldgenerator::world_generator::world_generator_builder::OxAgWorldGeneratorBuilder;
 use oxagworldgenerator::world_generator::OxAgWorldGenerator;
-use robotics_lib::runner::{Robot, Runner};
+use robotics_lib::runner::Runner;
 use robotics_lib::world::tile::Content;
-use sense_and_find_by_Rusafariani::Lssf;
-
-use crate::bot::ThumbotState;
 
 mod bot;
 mod utils;
 
 fn main() {
-    const WORLD_SIZE: usize = 50;
+    const WORLD_SIZE: usize = 70;
 
-    let lssf = Lssf::new();
-    let robot = bot::Thumbot::new(
-        Robot::default(),  // Robot
-        ThumbotState::Start, // ThumbotState
-        WORLD_SIZE,          // world size
-        vec![],              // bins locations
-        vec![],              // garbage locations
-    );
-
-
+    let robot = bot::Thumbot::new();
 
     // World generation
 

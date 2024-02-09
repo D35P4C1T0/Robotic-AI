@@ -1,4 +1,4 @@
-use robotics_lib::interface::{Direction, go, teleport};
+use robotics_lib::interface::{go, teleport, Direction};
 use robotics_lib::utils::LibError;
 use robotics_lib::world::World;
 use sense_and_find_by_Rusafariani::{Action, Lssf};

@@ -1,12 +1,15 @@
-pub(crate) mod spytrash;
-pub(crate) mod travel;
-
+use robotics_lib::interface::robot_map;
+use robotics_lib::runner::Runnable;
 use robotics_lib::world::tile::{Content, Tile, TileType};
+use robotics_lib::world::World;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::{event::Event, keyboard::Keycode, pixels::Color, rect::Rect};
 
-const TILE_SIZE: u32 = 20;
+pub(crate) mod spytrash;
+pub(crate) mod travel;
+
+const TILE_SIZE: u32 = 10;
 const CONTENT_DOT_RADIUS: i32 = 4;
 
 // bot: row,col
@@ -128,4 +131,33 @@ fn draw_approximate_circle(
             }
         }
     }
+}
+
+pub(crate) fn nearest_border_distance(robot: &impl Runnable, world: &World) -> usize {
+    let robot_pos = robot.get_coordinate();
+    // Assumiamo che robot_map(world) restituisca una griglia quadrata,
+    // quindi prendiamo la lunghezza di uno dei lati per calcolare world_size.
+
+    let world_size = world_dim(world);
+
+    let row = robot_pos.get_row();
+    let col = robot_pos.get_col();
+
+    // Calcola le distanze dai quattro bordi della mappa.
+    let dist_top = row; // Distanza dal bordo superiore.
+    let dist_bottom = world_size - row - 1; // Distanza dal bordo inferiore.
+    let dist_left = col; // Distanza dal bordo sinistro.
+    let dist_right = world_size - col - 1; // Distanza dal bordo destro.
+
+    // Restituisce la distanza minima tra quelle calcolate.
+    *[dist_top, dist_bottom, dist_left, dist_right]
+        .iter()
+        .min()
+        .unwrap()
+}
+
+pub(crate) fn world_dim(world: &World) -> usize {
+    robot_map(world)
+        .expect("Failed to retrieve robot_map()")
+        .len()
 }
