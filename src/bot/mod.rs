@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::mem;
-
 use robotics_lib::energy::Energy;
 use robotics_lib::event::events::Event;
 use robotics_lib::interface::debug;
@@ -10,7 +7,7 @@ use robotics_lib::utils::LibError;
 use robotics_lib::world::coordinates::Coordinate;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::World;
-use sense_and_find_by_Rusafariani::Lssf;
+use sense_and_find_by_rustafariani::Lssf;
 
 use crate::utils::spytrash::get_nearby_content;
 use crate::utils::{nearest_border_distance, render_world, world_dim};
@@ -36,7 +33,8 @@ pub(crate) struct Thumbot {
     // posizioni dei bidoni
     pub(crate) garbage_locations: Vec<(usize, usize)>,
     // posizioni dei rifiuti
-    pub(crate) lssf: RefCell<Lssf>, // riferimento mutabile a Lssf con RefCell per mutabilità interna
+    // pub(crate) lssf: RefCell<Lssf>,
+    pub(crate) lssf: Option<Lssf>,
 }
 
 impl Thumbot {
@@ -46,7 +44,7 @@ impl Thumbot {
             state: ThumbotState::Start,
             bins_locations: vec![],
             garbage_locations: vec![],
-            lssf: RefCell::new(Lssf::new()),
+            lssf: Some(Lssf::new()),
         }
     }
 
@@ -60,11 +58,18 @@ impl Thumbot {
             LARGEST_SQUARE_SIDE
         };
 
-        let mut temp_lssf = Lssf::new();
-        mem::swap(&mut temp_lssf, &mut *self.lssf.borrow_mut());
-        let result = temp_lssf.smart_sensing_centered(square_side, world, self, 50);
-        mem::swap(&mut temp_lssf, &mut *self.lssf.borrow_mut());
+        println!("bot location: {:?}", self.get_coordinate());
+
+        let mut temp_lssf = self.lssf.take().unwrap();
+        let result = temp_lssf.smart_sensing_centered(5, world, self, 1);
+        self.lssf = Some(temp_lssf);
         result
+
+        // let mut temp_lssf = Lssf::new();
+        // mem::swap(&mut temp_lssf, &mut *self.lssf.borrow_mut());
+        // let result = temp_lssf.smart_sensing_centered(square_side, world, self, 50);
+        // mem::swap(&mut temp_lssf, &mut *self.lssf.borrow_mut());
+        // result
     }
 
     // pub(crate) fn new() -> Self {
@@ -152,8 +157,9 @@ impl Runnable for Thumbot {
 
         println!("nearest border: {}", nearest_border_distance(self, world));
 
-        // let map_update_res = self.update_lssf_map(world); // index out of bounds
-        // println!("Map update result: {:?}", map_update_res);
+        let map_update_res = self.update_lssf_map(world); // index out of bounds
+                                                          // panic!("Map update result: {:?}", map_update_res);
+        println!("Map update result: {:?}", map_update_res);
 
         while self.get_energy().get_energy_level() > 0 {
             let debug_view = debug(self, world);

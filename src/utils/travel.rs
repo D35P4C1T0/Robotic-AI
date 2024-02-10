@@ -1,7 +1,7 @@
 use robotics_lib::interface::{go, teleport, Direction};
 use robotics_lib::utils::LibError;
 use robotics_lib::world::World;
-use sense_and_find_by_Rusafariani::{Action, Lssf};
+use sense_and_find_by_rustafariani::{Action, Lssf};
 
 use crate::bot::Thumbot;
 

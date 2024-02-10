@@ -8,7 +8,7 @@ keywords = ["robotics", "ai", "unitn", "advanced_programming", "rust"]
 robotics_lib = { registry = "kellnr" }
 bob_lib = { registry = "kellnr" }
 spyglass = { registry = "kellnr" }
-sense_and_find_by_Rusafariani = { registry = "kellnr" }
+sense_and_find_by_rustafariani = { registry = "kellnr" }
 who_needs_gv_street_explorer = { registry = "kellnr" }
 oxagworldgenerator = { registry = "kellnr" }
 
