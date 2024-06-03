@@ -1,11 +1,26 @@
+use lazy_static::lazy_static;
 use oxagworldgenerator::world_generator::content_options::OxAgContentOptions;
 use oxagworldgenerator::world_generator::world_generator_builder::OxAgWorldGeneratorBuilder;
 use oxagworldgenerator::world_generator::OxAgWorldGenerator;
+use robotics_lib::event::events::Event;
 use robotics_lib::runner::Runner;
-use robotics_lib::world::tile::Content;
+use robotics_lib::world::tile::{Content, Tile};
+use std::collections::HashMap;
+use std::sync::Mutex;
 
 mod bot;
 mod utils;
+
+// Static variables for data exchange between bevy and non bevy code
+lazy_static! {
+    // Store your variables here
+    pub static ref points: Mutex<f32> = Mutex::new(0.00);
+    pub static ref energy: Mutex<usize> = Mutex::new(0);
+    pub static ref robot_view: Mutex<Vec<Vec<Option<Tile>>>> = Mutex::new(vec![]);
+    pub static ref positions: Mutex<(usize, usize)> = Mutex::new((0, 0));
+    pub static ref backpack_content: Mutex<HashMap<Content, usize>> = Mutex::new(HashMap::new());
+    pub static ref events: Mutex<Vec<Event>> = Mutex::new(vec![]);
+}
 
 fn main() {
     const WORLD_SIZE: usize = 70;

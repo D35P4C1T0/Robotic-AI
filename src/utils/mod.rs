@@ -161,3 +161,9 @@ pub(crate) fn world_dim(world: &World) -> usize {
         .expect("Failed to retrieve robot_map()")
         .len()
 }
+
+// Reborn from the ashes
+
+pub fn valid_coords(x: i32, y: i32, size: i32) -> bool {
+    !(x >= size || x < 0 || y >= size || y < 0)
+}
