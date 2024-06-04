@@ -52,8 +52,8 @@ pub fn render_world(robot_position: (usize, usize), world_map: Vec<Vec<Tile>>) {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
 
-        for x in 0..map_height {
-            for y in 0..map_width {
+        for (x, row) in world_map.iter().enumerate() {
+            for (y, tile) in row.iter().enumerate() {
                 let rect = Rect::new(
                     (y as u32 * TILE_SIZE) as i32,
                     (x as u32 * TILE_SIZE) as i32,
@@ -61,33 +61,28 @@ pub fn render_world(robot_position: (usize, usize), world_map: Vec<Vec<Tile>>) {
                     TILE_SIZE,
                 );
 
-                // Set color based on tile type
-                let tile_color = match world_map[x][y].tile_type {
+                let tile_color = match tile.tile_type {
                     TileType::DeepWater => Color::RGB(0, 0, 128),
                     TileType::ShallowWater => Color::RGB(0, 128, 255),
                     TileType::Sand => Color::RGB(255, 255, 128),
                     TileType::Grass => Color::RGB(34, 139, 34),
-                    TileType::Street => Color::RGB(169, 169, 169),
+                    TileType::Street | TileType::Wall => Color::RGB(169, 169, 169),
                     TileType::Hill => Color::RGB(139, 69, 19),
                     TileType::Mountain => Color::RGB(139, 137, 137),
                     TileType::Snow => Color::RGB(255, 250, 250),
                     TileType::Lava => Color::RGB(255, 0, 0),
                     TileType::Teleport(_) => Color::RGB(255, 0, 255),
-                    TileType::Wall => Color::RGB(139, 69, 19),
                 };
 
                 canvas.set_draw_color(tile_color);
                 canvas.fill_rect(rect).unwrap();
 
-                // Render content dot for Garbage and Bin
-                match world_map[x][y].content {
-                    Content::Garbage(_) | Content::Bin(_) => {
-                        render_content_dot(&mut canvas, rect, &world_map[x][y].content);
-                    }
-                    _ => {}
+                if let Content::Garbage(_) | Content::Bin(_) = tile.content {
+                    render_content_dot(&mut canvas, rect, &tile.content);
                 }
             }
         }
+
         // Render robot position
         let (robot_y, robot_x) = robot_position;
         draw_approximate_circle(
