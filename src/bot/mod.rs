@@ -1,6 +1,6 @@
 use robotics_lib::energy::Energy;
 use robotics_lib::event::events::Event;
-use robotics_lib::interface::{debug, get_score, go, put, robot_map, teleport, Direction};
+use robotics_lib::interface::{debug, destroy, get_score, go, put, robot_map, teleport, Direction};
 use robotics_lib::runner::backpack::BackPack;
 use robotics_lib::runner::{Robot, Runnable};
 use robotics_lib::utils::LibError;
@@ -225,6 +225,7 @@ pub struct Scrapbot {
     pub trash_coords: Option<Vec<(usize, usize)>>,
     pub ticks: usize,
     pub must_empty: bool,
+    pub must_find_new_trash: bool,
     pub lssf: Option<Lssf>,
     pub actions_vec: Option<Vec<Action>>,
     pub target: Content,
@@ -238,82 +239,102 @@ impl Scrapbot {
             trash_coords: None,
             ticks: 0,
             must_empty: false,
+            must_find_new_trash: true,
             lssf: Some(Lssf::new()),
             actions_vec: None,
             target: Content::Garbage(0),
         }
     }
 
+    // energy
     pub fn full_recharge(&mut self) {
         *self.get_energy_mut() = Robot::new().energy;
         self.handle_event(Event::EnergyRecharged(1000));
     }
 
-    pub fn empty(&mut self, world: &mut World) {
-        // empties the backpack of the robot inside
-        // the bin, if the robot is near a bin.
-        // max trash in bin: 10
-        println!("EMPTY ROUTINE");
-        let contents = self.robot.backpack.get_contents().clone();
-        let mut iterations = 0;
-        while self.get_remaining_backpack_space() < 10 && iterations < 10 {
-            //println!("empty routine loop");
-            for (content, quantity) in contents.iter() {
-                println!("_content {:?}", content);
-                if *quantity > 0usize {
-                    //println!("inside empty if");
-                    self.full_recharge();
-                    self.drop_from_backpack((*content).clone(), world);
-                }
-            }
-            iterations += 1;
-        }
-        self.must_empty = false;
-    }
+    // trash methods
+    // pub fn empty_trash(&mut self, world: &mut World, direction: Direction) {
+    //     // empties the backpack of the robot inside
+    //     // the bin, if the robot is near a bin.
+    //     // max trash in bin: 10
+    //     println!("EMPTY ROUTINE");
+    //
+    //     let has_trash = self
+    //         .robot
+    //         .backpack
+    //         .get_contents()
+    //         .get(&Content::Garbage(0))
+    //         .map_or(false, |&quantity| quantity > 0);
+    //
+    //     if has_trash {
+    //         println!("emptying trash");
+    //         let trash_quantity = *self
+    //             .robot
+    //             .backpack
+    //             .get_contents()
+    //             .get(&Content::Garbage(0))
+    //             .unwrap();
+    //         // safe because of the has_trash bool
+    //         self.full_recharge(); // why not?
+    //         let result = self.drop_trash_into_bin(world, direction, trash_quantity);
+    //
+    //         match result {
+    //             Ok(quantity) => {
+    //                 if quantity == 0 {
+    //                     println!("the trash was full, searching new bin");
+    //                     self.must_find_new_trash = true;
+    //                 } else {
+    //                     println!("trash dropped: {}", quantity);
+    //                 }
+    //             }
+    //             Err(err) => println!("Error dropping trash: {:?}", err),
+    //         }
+    //
+    //         self.must_empty = false;
+    //     }
+    // }
 
-    pub fn drop_from_backpack(&mut self, content: Content, world: &mut World) {
-        // TODO: implement drop from backpack in the direction
-        println!("putting content of type: {:?}", content);
-
-        let any_usize = 50;
-        let next_content_to_reach = if content == Content::Garbage(0) {
-            Content::Bin(0..any_usize)
-        } else {
-            Content::None
-        };
-        let result = self
-            .lssf
-            .take()
-            .unwrap()
-            .smart_sensing_centered(5, world, self, 1);
-
+    pub fn collect_near_trash(
+        &mut self,
+        world: &mut World,
+        direction: Direction,
+    ) -> Result<usize, LibError> {
+        let result = destroy(self, world, direction);
         match result {
-            Ok(_) => {
-                self.trash_coords = Some(
-                    self.lssf
-                        .take()
-                        .unwrap()
-                        .get_content_vec(&next_content_to_reach),
-                );
+            Ok(quantity) => {
+                println!("Collected {} trash", quantity);
+                Ok(quantity)
             }
             Err(err) => {
-                println!("Error: {:?}", err);
+                println!("Error destroying: {:?}", err);
+                Err(err)
             }
         }
     }
 
-    pub fn plan_next_moves_given_coord(&mut self, coordinate: Coordinate) {
-        match self
-            .lssf
-            .take()
-            .unwrap()
-            .get_action_vec(coordinate.get_col(), coordinate.get_row())
-        {
-            Ok(actions) => {
-                self.actions_vec = Some(actions);
+    // bin methods
+    pub fn drop_trash_into_bin(
+        &mut self,
+        world: &mut World,
+        direction: Direction,
+        quantity: usize,
+    ) -> Result<usize, LibError> {
+        let content = Content::Garbage(0);
+        println!("putting content of type: {:?}", content);
+        match put(
+            self,
+            world,
+            Content::Garbage(0),
+            quantity,
+            direction.clone(),
+        ) {
+            Ok(quantity) => {
+                println!("trash dropped");
+                Ok(quantity)
             }
             Err(err) => {
-                println!("Error planning next move: {:?}", err);
+                println!("Error dropping trash: {:?}", err);
+                Err(err)
             }
         }
     }
@@ -340,15 +361,30 @@ impl Scrapbot {
     }
 
     // routine methods
+    pub fn plan_next_moves_given_coord(&mut self, coordinate: Coordinate) {
+        match self
+            .lssf
+            .take()
+            .unwrap()
+            .get_action_vec(coordinate.get_col(), coordinate.get_row())
+        {
+            Ok(actions) => {
+                self.actions_vec = Some(actions);
+            }
+            Err(err) => {
+                println!("Error planning next move: {:?}", err);
+            }
+        }
+    }
 
     pub fn execute_actions(
         &mut self,
         world: &mut World,
         ends_with_put: bool,
-        content: Option<Content>,
-    ) {
+        ends_with_destroy: bool,
+    ) -> Result<usize, LibError> {
         if self.actions_vec.is_some() {
-            let last_move = if ends_with_put {
+            let last_move = if ends_with_put || ends_with_destroy {
                 self.actions_vec.take().and_then(|mut vec| {
                     let last = vec.pop();
                     self.actions_vec = Some(vec);
@@ -358,10 +394,10 @@ impl Scrapbot {
                 None
             };
 
-            // iterate over the actions and execute them
+            // iterate over the moves and execute them
             if let Some(mut actions) = self.actions_vec.take() {
+                self.full_recharge(); // because why not
                 for action in &mut actions {
-                    self.full_recharge(); // because why not
                     match action {
                         Action::North => if go(self, world, Direction::Up).is_ok() {},
                         Action::South => if go(self, world, Direction::Down).is_ok() {},
@@ -376,40 +412,51 @@ impl Scrapbot {
                 self.actions_vec = Some(actions);
             }
 
-            if let Some(content) = content {
-                let quantity = self.get_content_quantity(&content);
-                let put_direction: Direction = match last_move {
-                    Some(Action::North) => Direction::Up,
-                    Some(Action::South) => Direction::Down,
-                    Some(Action::East) => Direction::Right,
-                    Some(Action::West) => Direction::Left,
-                    _ => Direction::Up, // hope it doesnt get here
-                };
+            let last_action_direction: Direction = match last_move {
+                Some(Action::North) => Direction::Up,
+                Some(Action::South) => Direction::Down,
+                Some(Action::East) => Direction::Right,
+                Some(Action::West) => Direction::Left,
+                _ => Direction::Up, // hope it doesnt get here
+            };
 
-                let removed_result = put(self, world, content, quantity, put_direction);
-                // handles a full bin
-                match removed_result {
-                    Ok(0) => {
-                        // assumes the first bin is the bin I went to put the trash in
-                        println!("No content removed from backpack");
-                        if let Some(mut bin_coords) = self.bin_coords.take() {
-                            if !bin_coords.is_empty() {
-                                // remove the bin from the list
-                                let bad_bin = bin_coords.remove(0);
-                                println!("Removed the bin at: {}{}", bad_bin.0, bad_bin.1);
-                            } else {
-                                println!("The vector is empty, no element to remove.");
-                            }
-                            self.bin_coords = Some(bin_coords); // Put back the modified bin_coords
+            self.full_recharge(); // because why not
+
+            if ends_with_destroy {
+                return match self.collect_near_trash(world, last_action_direction.clone()) {
+                    Ok(q) => {
+                        if q == 0 {
+                            self.must_find_new_trash = true;
                         }
+                        println!("Collected {} trash", q);
+                        Ok(q)
                     }
-                    Ok(r) => println!("Content removed from backpack: {:?}", r),
-                    Err(err) => println!("Error removing content from backpack: {:?}", err),
-                }
-
-                self.actions_vec.as_mut().unwrap().clear(); // clear the actions vector
+                    Err(err) => {
+                        println!("Error collecting trash: {:?}", err);
+                        Err(err)
+                    }
+                };
             }
+
+            if ends_with_put {
+                let quantity = self.get_content_quantity(&Content::Garbage(0));
+                return match self.drop_trash_into_bin(world, last_action_direction, quantity) {
+                    Ok(q) => {
+                        if q == 0 {
+                            self.must_find_new_trash = true;
+                        }
+                        println!("Dropped {} trash", q);
+                        Ok(q)
+                    }
+                    Err(err) => {
+                        println!("Error dropping trash: {:?}", err);
+                        Err(err)
+                    }
+                };
+            }
+            self.actions_vec.as_mut().unwrap().clear(); // clear the actions vector
         }
+        Ok(0)
     }
 
     pub fn work_done(&mut self, world: &mut World) -> bool {
@@ -461,8 +508,8 @@ impl Scrapbot {
                     self.trash_coords =
                         Some(self.lssf.take().unwrap().get_content_vec(&Garbage(0)));
                 } else if self.trash_coords.take().unwrap().is_empty() {
-                    // finiti i trash
-                    self.search_bins(world);
+                    // trash_points esauriti
+                    self.must_find_new_trash = true;
                     if self.bin_coords.is_some() && self.bin_coords.take().unwrap().is_empty() {
                         // finiti i bin
                         is_work_done = true;
@@ -560,6 +607,36 @@ impl Scrapbot {
             Err(err) => {
                 println!("Error finding garbage: {:?}", err);
             }
+        }
+    }
+
+    pub fn sort_points_from_nearest(&mut self, content: Content) {
+        let mut coords_vec_to_be_ordered = if content == Content::Garbage(0) {
+            self.trash_coords.take()
+        } else {
+            self.bin_coords.take()
+        };
+
+        if let Some(coords_vec) = &mut coords_vec_to_be_ordered {
+            coords_vec.sort_by(|a, b| {
+                let a_row = a.0 as i32;
+                let a_col = a.1 as i32;
+                let b_row = b.0 as i32;
+                let b_col = b.1 as i32;
+
+                let a_distance = (a_row - self.get_coordinate().get_row() as i32).abs()
+                    + (a_col - self.get_coordinate().get_col() as i32).abs();
+                let b_distance = (b_row - self.get_coordinate().get_row() as i32).abs()
+                    + (b_col - self.get_coordinate().get_col() as i32).abs();
+
+                a_distance.cmp(&b_distance)
+            });
+        }
+        
+        if content == Content::Garbage(0) {
+            self.trash_coords = coords_vec_to_be_ordered;
+        } else {
+            self.bin_coords = coords_vec_to_be_ordered;
         }
     }
 }
