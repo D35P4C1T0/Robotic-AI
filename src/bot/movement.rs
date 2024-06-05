@@ -1,9 +1,11 @@
-use crate::bot::{BotAction, Scrapbot};
-use robotics_lib::interface::{go, teleport, Direction};
+use robotics_lib::interface::{go, robot_map, teleport, Direction};
+use robotics_lib::runner::Runnable;
 use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::World;
 use sense_and_find_by_rustafariani::Action;
+
+use crate::bot::{BotAction, Scrapbot};
 
 impl Scrapbot {
     pub fn populate_action_vec_given_point(&mut self, coordinate: (usize, usize)) {
@@ -128,5 +130,49 @@ impl Scrapbot {
 
         // need to call methods to go and collect trash
         // or dispose it in the bin right after this method
+    }
+
+    pub fn next_quadrant_clockwise(&self, world: &mut World) -> (usize, usize) {
+        let map_side = robot_map(world).unwrap().len();
+        let quadrants_centers = [
+            (map_side / 4, map_side / 4),
+            (map_side / 4, (map_side / 4) * 3),
+            ((map_side / 4) * 3, (map_side / 4) * 3),
+            ((map_side / 4) * 3, map_side / 4),
+        ];
+
+        // 1 | 2
+        // -----
+        // 4 | 3
+        // clockwise
+
+        let (bot_col, bot_row) = (
+            self.get_coordinate().get_col(),
+            self.get_coordinate().get_row(),
+        );
+
+        let bot_location_quadrant = match (bot_row <= map_side / 2, bot_col <= map_side / 2) {
+            (true, true) => 1,
+            (true, false) => 2,
+            (false, false) => 3,
+            (false, true) => 4,
+        };
+
+        let next_quadrant = match bot_location_quadrant {
+            1 => 2,
+            2 => 3,
+            3 => 4,
+            4 => 1,
+            _ => 1,
+        };
+
+        quadrants_centers[next_quadrant - 1]
+    }
+
+    // They call me the wanderer
+    // Yeah, the wanderer
+    // I roam around, around, around
+    pub fn routine_wander(&mut self, world: &mut World) {
+        // TODO: set the next quadrant center as the target
     }
 }
