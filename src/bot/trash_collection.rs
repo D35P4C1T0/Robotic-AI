@@ -62,8 +62,7 @@ impl Scrapbot {
         self.collect_new_trash(world, portion_of_map, free_backpack_space)
     }
     pub fn lssf_search_trash(&mut self, world: &mut World) -> Result<bool, LibError> {
-        let result = self.lssf_update(world, 10);
-
+        let result = self.lssf_update(world, None);
         match result {
             Ok(_) => {
                 let old_lssf = self.lssf.take().unwrap();
@@ -96,18 +95,13 @@ impl Scrapbot {
             }
         }
     }
-    pub fn search_bins(&mut self, world: &mut World) -> Result<bool, LibError> {
-        let result = self
-            .lssf
-            .take()
-            .unwrap()
-            .smart_sensing_centered(5, world, self, 1);
-
+    pub fn lssf_search_bins(&mut self, world: &mut World) -> Result<bool, LibError> {
+        let result = self.lssf_update(world, None);
         match result {
             Ok(_) => {
                 let bin_found = self
                     .lssf
-                    .take()
+                    .as_ref()
                     .unwrap()
                     .get_content_vec(&Content::Bin(0..10));
 
@@ -136,67 +130,5 @@ impl Scrapbot {
                 Err(err)
             }
         }
-    }
-
-    pub fn routine_collect_trash(&mut self, world: &mut World) -> Result<(), LibError> {
-        self.full_recharge();
-        let backpack_threshold = MAX_BACKPACK_ITEMS / 6;
-        let lssf_result = self.lssf_update(world, 10);
-        match lssf_result {
-            Ok(_) => {
-                match self.lssf_search_trash(world) {
-                    Ok(trash_found) => {
-                        if trash_found {
-                            // iterate over trash location, populate the action vec to
-                            // reach that location and call
-                            // collect_new_trash
-                            let trash_coords = self.trash_coords.take().unwrap();
-                            for coords in trash_coords {
-                                if self.get_remaining_backpack_space() <= backpack_threshold {
-                                    break; // fillato abbastanza yeah
-                                }
-
-                                // this creates the actions to do in order to reach point
-                                self.populate_action_vec_given_point(coords);
-
-                                // now I should be near some trash
-                                let walk_result =
-                                    self.run_action_vec_and_then(world, BotAction::Walk);
-                                if walk_result.is_ok() {
-                                    let collect_result =
-                                        self.collect_new_trash_fill_backpack(world);
-                                    return match collect_result {
-                                        Ok(q) => {
-                                            if q == 0 {
-                                                self.must_find_new_trash = false;
-                                                println!("Got no trash, sadly");
-                                            }
-                                            println!("Collected {} trash", q);
-                                            Ok(())
-                                        }
-                                        Err(err) => {
-                                            println!("Error collecting trash: {:?}", err);
-                                            Err(err)
-                                        }
-                                    };
-                                }
-                            }
-                        } else {
-                            println!("No trash found");
-                            return Ok(());
-                        }
-                    }
-                    Err(err) => {
-                        println!("Error searching trash: {:?}", err);
-                        return Err(err);
-                    }
-                }
-            }
-            Err(err) => {
-                println!("Error finding garbage: {:?}", err);
-                return Err(err);
-            }
-        }
-        Ok(())
     }
 }

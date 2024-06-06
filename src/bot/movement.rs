@@ -78,7 +78,9 @@ impl Scrapbot {
                 }
                 BotAction::Put => {
                     let quantity = self.get_content_quantity(&Content::Garbage(0));
-                    return match self.drop_trash_into_bin(world, last_move_direction, quantity) {
+                    return match self
+                        .drop_trash_into_bin_in_front_of(world, last_move_direction.clone())
+                    {
                         Ok(q) => {
                             if q == 0 {
                                 self.must_find_new_trash = true;
@@ -105,34 +107,17 @@ impl Scrapbot {
         Ok(0)
     }
 
-    // needed??
-    pub fn move_to_coords_and_do_action(&mut self, coords: (usize, usize), world: &mut World) {
-        let result = self
-            .lssf
-            .take()
-            .unwrap()
-            .smart_sensing_centered(5, world, self, 1);
-
-        match result {
-            Ok(_) => {
-                self.actions_vec = Some(
-                    self.lssf
-                        .take()
-                        .unwrap()
-                        .get_action_vec(coords.0, coords.1)
-                        .unwrap(),
-                );
-            }
-            Err(err) => {
-                println!("Error moving to coords: {:?}", err);
-            }
+    pub fn get_last_move_direction(&self) -> Direction {
+        match self.actions_vec.as_ref().unwrap().last().unwrap() {
+            Action::North => Direction::Up,
+            Action::South => Direction::Down,
+            Action::East => Direction::Right,
+            Action::West => Direction::Left,
+            _ => Direction::Up, // hope it doesnt get here
         }
-
-        // need to call methods to go and collect trash
-        // or dispose it in the bin right after this method
     }
 
-    pub fn next_quadrant_clockwise(&self, world: &mut World) -> (usize, usize) {
+    pub fn next_quadrant_clockwise(&mut self, world: &mut World) -> (usize, usize) {
         let map_side = robot_map(world).unwrap().len();
         let quadrants_centers = [
             (map_side / 4, map_side / 4),
@@ -151,12 +136,19 @@ impl Scrapbot {
             self.get_coordinate().get_row(),
         );
 
-        let bot_location_quadrant = match (bot_row <= map_side / 2, bot_col <= map_side / 2) {
+        let bot_location_quadrant: usize = match (bot_row <= map_side / 2, bot_col <= map_side / 2)
+        {
             (true, true) => 1,
             (true, false) => 2,
             (false, false) => 3,
             (false, true) => 4,
         };
+
+        // mark current quadrant as visited
+        self.quadrants_visited
+            .entry(bot_location_quadrant)
+            .and_modify(|e| *e = true)
+            .or_insert(true);
 
         let next_quadrant = match bot_location_quadrant {
             1 => 2,
@@ -167,12 +159,5 @@ impl Scrapbot {
         };
 
         quadrants_centers[next_quadrant - 1]
-    }
-
-    // They call me the wanderer
-    // Yeah, the wanderer
-    // I roam around, around, around
-    pub fn routine_wander(&mut self, world: &mut World) {
-        // TODO: set the next quadrant center as the target
     }
 }
