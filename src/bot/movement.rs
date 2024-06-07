@@ -25,86 +25,66 @@ impl Scrapbot {
         world: &mut World,
         action: BotAction,
     ) -> Result<usize, LibError> {
-        // used to run the actions vector
-        if self.actions_vec.is_some() {
-            // last_move is the last element of the actions vector
-            // remove the last element of the actions vector
-            // and put it in last_move
-            let last_move_direction = match self.actions_vec.as_mut().unwrap().remove(0) {
+        // Run the actions vector if it exists
+        if let Some(mut actions) = self.actions_vec.take() {
+            // Get the last move direction from the first element of the actions vector
+            let last_move_direction = match actions.remove(0) {
                 Action::North => Direction::Up,
                 Action::South => Direction::Down,
                 Action::East => Direction::Right,
                 Action::West => Direction::Left,
-                _ => Direction::Up, // hope it doesnt get here
+                _ => Direction::Up, // Default to Up, though ideally should never hit this case
             };
 
-            // iterate over the moves and execute them, moving the robot
-            if let Some(mut actions) = self.actions_vec.take() {
-                self.full_recharge(); // because why not
-                for action in &mut actions {
-                    match action {
-                        Action::North => if go(self, world, Direction::Up).is_ok() {},
-                        Action::South => if go(self, world, Direction::Down).is_ok() {},
-                        Action::East => if go(self, world, Direction::Right).is_ok() {},
-                        Action::West => if go(self, world, Direction::Left).is_ok() {},
-                        Action::Teleport(row, col) => {
-                            if teleport(self, world, (*row, *col)).is_ok() {}
-                        }
+            // Execute the actions in the vector
+            self.full_recharge();
+            for action in &actions {
+                match action {
+                    Action::North => {
+                        go(self, world, Direction::Up).ok();
+                    }
+                    Action::South => {
+                        go(self, world, Direction::Down).ok();
+                    }
+                    Action::East => {
+                        go(self, world, Direction::Right).ok();
+                    }
+                    Action::West => {
+                        go(self, world, Direction::Left).ok();
+                    }
+                    Action::Teleport(row, col) => {
+                        teleport(self, world, (*row, *col)).ok();
                     }
                 }
-                // Put the modified vector back into the option
-                self.actions_vec = Some(actions);
             }
 
-            // at this point, the bot should be in front of the desired content
-            self.full_recharge(); // because why not
+            self.actions_vec = Some(actions); // Put the modified vector back
 
-            match action {
-                BotAction::Destroy => {
-                    return match self.collect_trash_in_front_of(world, last_move_direction.clone())
-                    {
-                        Ok(q) => {
-                            if q == 0 {
-                                self.must_find_new_trash = true;
-                            }
-                            println!("Collected {} trash", q);
-                            Ok(q)
-                        }
-                        Err(err) => {
-                            println!("Error collecting trash: {:?}", err);
-                            Err(err)
-                        }
-                    };
-                }
-                BotAction::Put => {
-                    let quantity = self.get_content_quantity(&Content::Garbage(0));
-                    return match self
-                        .drop_trash_into_bin_in_front_of(world, last_move_direction.clone())
-                    {
-                        Ok(q) => {
-                            if q == 0 {
-                                self.must_find_new_trash = true;
-                            }
-                            println!("Dropped {} trash", q);
-                            Ok(q)
-                        }
-                        Err(err) => {
-                            println!("Error dropping trash: {:?}", err);
-                            Err(err)
-                        }
-                    };
-                }
+            // Perform the final action
+            self.full_recharge();
+            let result = match action {
+                BotAction::Destroy => self.collect_trash_in_front_of(world, last_move_direction),
+                BotAction::Put => self.drop_trash_into_bin_in_front_of(world, last_move_direction),
                 BotAction::Start => {
-                    self.actions_vec.as_mut().unwrap().clear(); // clear the actions vector
-                }
-                BotAction::Walk => {
-                    // do nothing, just reach the spot
+                    self.actions_vec.as_mut().unwrap().clear();
                     return Ok(0);
                 }
+                BotAction::Walk => return Ok(0),
+            };
+
+            match result {
+                Ok(q) => {
+                    println!("Processed {} trash", q);
+                    Ok(q)
+                }
+                Err(err) => {
+                    println!("Error processing action: {:?}", err);
+                    Err(err)
+                }
             }
-            self.actions_vec.as_mut().unwrap().clear(); // clear the actions vector
+        } else {
+            Ok(0)
         }
-        Ok(0)
     }
 
     pub fn get_last_move_direction(&self) -> Direction {

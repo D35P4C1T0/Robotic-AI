@@ -1,10 +1,12 @@
-use crate::bot::{BotAction, Scrapbot, MAX_BACKPACK_ITEMS};
+use std::collections::HashMap;
+
 use pmp_collect_all::CollectAll;
-use robotics_lib::interface::{destroy, robot_map, Direction};
+use robotics_lib::interface::{destroy, put, robot_map, Direction};
 use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::World;
-use std::collections::HashMap;
+
+use crate::bot::Scrapbot;
 
 impl Scrapbot {
     // deprecated
@@ -21,6 +23,39 @@ impl Scrapbot {
             }
             Err(err) => {
                 println!("Error destroying: {:?}", err);
+                Err(err)
+            }
+        }
+    }
+
+    pub fn drop_trash_into_bin_in_front_of(
+        &mut self,
+        world: &mut World,
+        direction: Direction,
+    ) -> Result<usize, LibError> {
+        // call this if you have the action vector set to drop trash
+        let quantity = self.get_content_quantity(&Content::Garbage(0));
+        if quantity == 0 {
+            return Ok(999);
+            // 999 is a special value to indicate that there is no
+            // trash to drop from the backpack
+        }
+
+        let content = Content::Garbage(0);
+        println!("putting content of type: {:?}", content);
+        match put(
+            self,
+            world,
+            Content::Garbage(0),
+            quantity,
+            direction.clone(),
+        ) {
+            Ok(quantity) => {
+                println!("trash dropped");
+                Ok(quantity)
+            }
+            Err(err) => {
+                println!("Error dropping trash: {:?}", err);
                 Err(err)
             }
         }
@@ -45,10 +80,7 @@ impl Scrapbot {
         // required quantity. So we need to check how much we collected
         let new_backpack_space = self.get_remaining_backpack_space();
         match new_backpack_space < free_backpack_space {
-            true => {
-                self.must_find_new_trash = false;
-                Ok(free_backpack_space - new_backpack_space)
-            }
+            true => Ok(free_backpack_space - new_backpack_space),
             false => Ok(0),
         }
     }
@@ -82,7 +114,6 @@ impl Scrapbot {
                             }
                         }
 
-                        self.must_find_new_trash = false;
                         self.util_sort_points_from_nearest(Content::Garbage(0));
                         Ok(true)
                     }
@@ -118,7 +149,6 @@ impl Scrapbot {
                             }
                         }
 
-                        self.must_find_new_bin = false;
                         self.util_sort_points_from_nearest(Content::Bin(0..10));
                         Ok(true)
                     }

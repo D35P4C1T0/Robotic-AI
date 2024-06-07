@@ -37,9 +37,6 @@ pub struct Scrapbot {
     pub bin_coords: Option<Vec<(usize, usize)>>,
     pub trash_coords: Option<Vec<(usize, usize)>>,
     pub ticks: usize,
-    pub must_empty: bool,
-    pub must_find_new_trash: bool,
-    pub must_find_new_bin: bool,
     pub lssf: Option<Lssf>,
     pub actions_vec: Option<Vec<Action>>,
     pub bot_action: BotAction,
@@ -54,9 +51,6 @@ impl Scrapbot {
             bin_coords: None,
             trash_coords: None,
             ticks: 0,
-            must_empty: false,
-            must_find_new_trash: true,
-            must_find_new_bin: true,
             lssf: Some(Lssf::new()),
             actions_vec: None,
             bot_action: BotAction::Start,
@@ -72,14 +66,8 @@ impl Scrapbot {
 
     // backpack methods
     pub fn get_remaining_backpack_space(&mut self) -> usize {
-        let mut space_left = MAX_BACKPACK_ITEMS;
-        let backpack = self.robot.backpack.get_contents();
-
-        for (_, quantity) in backpack.iter() {
-            space_left -= quantity;
-        }
-
-        space_left
+        let used_space: usize = self.robot.backpack.get_contents().values().sum();
+        MAX_BACKPACK_ITEMS - used_space
     }
 
     pub fn get_content_quantity(&mut self, content: &Content) -> usize {
@@ -91,41 +79,6 @@ impl Scrapbot {
         *self.get_energy_mut() = Robot::new().energy;
         self.handle_event(Event::EnergyRecharged(1000));
     }
-
-    // bin methods
-    pub fn drop_trash_into_bin_in_front_of(
-        &mut self,
-        world: &mut World,
-        direction: Direction,
-    ) -> Result<usize, LibError> {
-        // call this if you have the action vector set to drop trash
-        let quantity = self.get_content_quantity(&Content::Garbage(0));
-        if quantity == 0 {
-            self.must_find_new_trash = true;
-            return Ok(999); // 999 is a special value to indicate that there is no trash to drop
-        }
-
-        let content = Content::Garbage(0);
-        println!("putting content of type: {:?}", content);
-        match put(
-            self,
-            world,
-            Content::Garbage(0),
-            quantity,
-            direction.clone(),
-        ) {
-            Ok(quantity) => {
-                println!("trash dropped");
-                Ok(quantity)
-            }
-            Err(err) => {
-                println!("Error dropping trash: {:?}", err);
-                Err(err)
-            }
-        }
-    }
-
-    // routine methods
 
     pub fn work_done(&mut self, world: &mut World) -> bool {
         let mut is_work_done = false;
@@ -173,18 +126,13 @@ impl Scrapbot {
                     self.lssf = Some(old_lssf);
                 } else if self.trash_coords.as_ref().unwrap().is_empty() {
                     // trash_points esauriti
-                    self.must_find_new_trash = true;
+                    // self.must_find_new_trash = true;
                     if self.bin_coords.is_some() && self.bin_coords.as_ref().unwrap().is_empty() {
                         // finiti i bin
                         is_work_done = true;
                     }
-                    // else {
-                    //     let c = self.bin_coords.clone().unwrap();
-                    //     println!("bin cord now: {:?}", known_map[c.0][c.1].clone().unwrap());
-                    // }
                 }
             }
-            //println!("percentuale di mondo non scoperta: {}", (none_num as f64) / ((size*size) as f64))
         }
         is_work_done
     }
@@ -214,21 +162,19 @@ impl Scrapbot {
         input_radius: Option<usize>,
     ) -> Result<(), LibError> {
         self.full_recharge();
-        // if radius is specified, use it, otherwise use default
-        // which is an eighth of the map size
-        let mut radius = robot_map(world).unwrap().len() / 8;
-        if input_radius.is_some() {
-            radius = input_radius.unwrap();
-        }
+        // Use the specified radius if provided, otherwise use default (1/8 of map size)
+        let radius = input_radius.unwrap_or_else(|| robot_map(world).unwrap().len() / 8);
 
-        let mut old_lssf = self.lssf.take().unwrap();
-        match old_lssf.smart_sensing_centered(radius, world, self, 1) {
-            Ok(_) => {
-                self.lssf = Some(old_lssf);
-                Ok(())
-            }
+        // Update LSSF
+        let mut lssf = self.lssf.take().unwrap();
+        let result = lssf.smart_sensing_centered(radius, world, self, 1);
+        self.lssf = Some(lssf);
+
+        // Return result
+        match result {
+            Ok(_) => Ok(()),
             Err(err) => {
-                self.lssf = Some(old_lssf);
+                println!("Error updating LSSF: {:?}", err);
                 Err(err)
             }
         }
