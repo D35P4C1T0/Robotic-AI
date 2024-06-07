@@ -1,6 +1,10 @@
+use std::collections::HashMap;
+use std::hash::Hash;
+
+use oxagaudiotool::OxAgAudioTool;
 use robotics_lib::energy::Energy;
 use robotics_lib::event::events::Event;
-use robotics_lib::interface::{get_score, put, robot_map, Direction};
+use robotics_lib::interface::{get_score, robot_map};
 use robotics_lib::runner::backpack::BackPack;
 use robotics_lib::runner::{Robot, Runnable};
 use robotics_lib::utils::LibError;
@@ -10,14 +14,14 @@ use robotics_lib::world::tile::Content::Garbage;
 use robotics_lib::world::World;
 use sense_and_find_by_rustafariani::{Action, Lssf};
 use spyglass::spyglass::Spyglass;
-use std::collections::HashMap;
-use std::hash::Hash;
 
+use crate::bot::sound::populate_sound;
 use crate::{backpack_content, energy, events, points, positions, robot_view};
 
 mod movement;
 mod print;
 mod routines;
+mod sound;
 mod trash_collection;
 
 // Each bin can handle max 10 of garbage.
@@ -26,14 +30,15 @@ mod trash_collection;
 const MAX_BACKPACK_ITEMS: usize = 20;
 
 pub enum BotAction {
-    Destroy,
     Put,
+    Destroy,
     Start,
     Walk,
 }
 
 pub struct Scrapbot {
     pub robot: Robot,
+    pub audio: OxAgAudioTool,
     pub bin_coords: Option<Vec<(usize, usize)>>,
     pub trash_coords: Option<Vec<(usize, usize)>>,
     pub ticks: usize,
@@ -48,6 +53,7 @@ impl Scrapbot {
     pub fn new() -> Scrapbot {
         Scrapbot {
             robot: Robot::new(),
+            audio: OxAgAudioTool::new(populate_sound(), HashMap::new(), HashMap::new()).unwrap(),
             bin_coords: None,
             trash_coords: None,
             ticks: 0,

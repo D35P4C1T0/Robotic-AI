@@ -4,12 +4,11 @@ use robotics_lib::world::World;
 
 use crate::bot::{BotAction, Scrapbot, MAX_BACKPACK_ITEMS};
 
-enum RoutineResult {
+pub(crate) enum RoutineResult {
     Success,
     FilledBackpack,
     PartiallyFilledBackpack,
     EmptyBackpack,
-    Failure,
     NoChanges,
     NewResourcesNotFound,
     FoundFullBin,
@@ -36,14 +35,14 @@ impl Scrapbot {
                 return Ok(RoutineResult::FilledBackpack);
             }
 
-            self.populate_action_vec_given_point(coords.clone());
+            self.populate_action_vec_given_point(*coords);
             self.run_action_vec_and_then(world, BotAction::Walk)?;
 
             match self.collect_new_trash_fill_backpack(world) {
                 Ok(q) => {
                     if q == 0 {
                         println!("Got no trash, sadly");
-                        bad_trash_coords.push(coords.clone());
+                        bad_trash_coords.push(*coords);
                         continue;
                     }
                     trash_gathered += q;
@@ -94,14 +93,14 @@ impl Scrapbot {
         let mut bad_bins_vec = vec![];
 
         for coords in &bin_coords {
-            self.populate_action_vec_given_point(coords.clone());
+            self.populate_action_vec_given_point(*coords);
             self.run_action_vec_and_then(world, BotAction::Walk)?;
 
             match self.drop_trash_into_bin_in_front_of(world, self.get_last_move_direction()) {
                 Ok(0) => {
                     println!("Dropped no trash, sadly found bin full");
                     println!("Removing bin at {}{} from list", coords.0, coords.1);
-                    bad_bins_vec.push(coords.clone());
+                    bad_bins_vec.push(*coords);
                 }
                 Ok(999) => {
                     println!("Tried to drop 0 trash");
@@ -132,7 +131,10 @@ impl Scrapbot {
     // They call me the wanderer
     // Yeah, the wanderer
     // I roam around, around, around
-    pub fn routine_wander(&mut self, world: &mut World) -> Result<RoutineResult, LibError> {
+    pub fn routine_wander_to_next_quadrant(
+        &mut self,
+        world: &mut World,
+    ) -> Result<RoutineResult, LibError> {
         // This routine is called when the bot has no more trash to collect
         self.full_recharge();
         let new_location = self.next_quadrant_clockwise(world);
@@ -146,7 +148,29 @@ impl Scrapbot {
             })
     }
 
-    // TODO: rework routine method
+    pub fn routine_reach_closest_undiscovered_tile(
+        &mut self,
+        world: &mut World,
+    ) -> Result<RoutineResult, LibError> {
+        self.full_recharge();
+        let next_location = self.bfs_find_closest_undiscovered_tile(world);
+        match next_location {
+            Some(location) => {
+                self.populate_action_vec_given_point(location);
+                self.run_action_vec_and_then(world, BotAction::Walk)
+                    .map(|_| RoutineResult::Success)
+                    .map_err(|err| {
+                        println!("Error wandering: {:?}", err);
+                        err
+                    })
+            }
+            None => {
+                println!("No undiscovered tiles found");
+                Ok(RoutineResult::NewResourcesNotFound)
+            }
+        }
+    }
+
     pub fn routine(&mut self, world: &mut World) {
         if self.quadrants_visited.values().all(|&v| v) {
             println!("All quadrants visited, stopping");
@@ -158,7 +182,9 @@ impl Scrapbot {
         self.bin_coords.get_or_insert_with(Vec::new);
         self.trash_coords.get_or_insert_with(Vec::new);
 
-        if self.get_remaining_backpack_space() >= MAX_BACKPACK_ITEMS * (3 / 5) {
+        if self.get_remaining_backpack_space()
+            >= (MAX_BACKPACK_ITEMS as f32 * (0.6f32)).floor() as usize
+        {
             if let Ok(result) = self.routine_collect_trash(world) {
                 match result {
                     RoutineResult::Success => println!("Trash collected"),
@@ -173,10 +199,19 @@ impl Scrapbot {
             println!("Backpack is full");
             self.handle_full_backpack(world);
         }
+
+        let random = rand::random::<f32>();
+        // 5% to wander to next unknown tile
+        if random < 0.05 {
+            match self.routine_reach_closest_undiscovered_tile(world) {
+                Ok(RoutineResult::Success) => println!("Went to next undiscovered tile"),
+                _ => println!("Error wandering"),
+            }
+        }
     }
 
     fn handle_wandering(&mut self, world: &mut World) {
-        match self.routine_wander(world) {
+        match self.routine_wander_to_next_quadrant(world) {
             Ok(RoutineResult::Success) => println!("Went to next quadrant"),
             _ => println!("Error wandering"),
         }

@@ -1,13 +1,69 @@
+use std::collections::VecDeque;
+
 use robotics_lib::interface::{go, robot_map, teleport, Direction};
 use robotics_lib::runner::Runnable;
 use robotics_lib::utils::LibError;
-use robotics_lib::world::tile::Content;
+use robotics_lib::world::tile::{Tile, TileType};
 use robotics_lib::world::World;
 use sense_and_find_by_rustafariani::Action;
 
 use crate::bot::{BotAction, Scrapbot};
 
+fn is_undiscovered_tile(known_map: &[Vec<Option<Tile>>], x: usize, y: usize) -> bool {
+    known_map[x][y].is_none()
+}
+
+fn valid_coords(x: i32, y: i32, map_size: i32) -> bool {
+    x >= 0 && y >= 0 && x < map_size && y < map_size
+}
+
 impl Scrapbot {
+    pub fn bfs_find_closest_undiscovered_tile(
+        &mut self,
+        world: &mut World,
+    ) -> Option<(usize, usize)> {
+        let robot_x = self.get_coordinate().get_row();
+        let robot_y = self.get_coordinate().get_col();
+        let known_map = robot_map(world).unwrap();
+        let map_size = known_map.len() as i32;
+        let mut visited = vec![vec![false; map_size as usize]; map_size as usize];
+        let mut queue = VecDeque::new();
+
+        // Mark impassable tiles as visited
+        for i in 0..map_size {
+            for j in 0..map_size {
+                if let Some(tile) = known_map[i as usize][j as usize].clone() {
+                    match tile.tile_type {
+                        TileType::Lava | TileType::DeepWater | TileType::Wall => {
+                            visited[i as usize][j as usize] = true;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        queue.push_back((robot_x, robot_y));
+        visited[robot_x][robot_y] = true;
+
+        while let Some((x_u, y_u)) = queue.pop_front() {
+            if is_undiscovered_tile(&known_map, x_u, y_u) {
+                return Some((x_u, y_u));
+            }
+
+            for (dx, dy) in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let (x_next, y_next) = (x_u as i32 + dx, y_u as i32 + dy);
+                if valid_coords(x_next, y_next, map_size)
+                    && !visited[x_next as usize][y_next as usize]
+                {
+                    queue.push_back((x_next as usize, y_next as usize));
+                    visited[x_next as usize][y_next as usize] = true;
+                }
+            }
+        }
+
+        None
+    }
     pub fn populate_action_vec_given_point(&mut self, coordinate: (usize, usize)) {
         let old_lssf = self.lssf.take().unwrap();
         match old_lssf.get_action_vec(coordinate.0, coordinate.1) {

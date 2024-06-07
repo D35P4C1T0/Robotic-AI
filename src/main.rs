@@ -25,7 +25,7 @@ lazy_static! {
 fn main() {
     const WORLD_SIZE: usize = 70;
 
-    let robot = bot::Thumbot::new();
+    let robot = bot::Scrapbot::new();
 
     // World generation
 

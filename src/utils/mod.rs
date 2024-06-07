@@ -7,7 +7,6 @@ use sdl2::video::Window;
 use sdl2::{event::Event, keyboard::Keycode, pixels::Color, rect::Rect};
 
 pub(crate) mod spytrash;
-pub(crate) mod travel;
 
 const TILE_SIZE: u32 = 10;
 const CONTENT_DOT_RADIUS: i32 = 4;
