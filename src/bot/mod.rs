@@ -2,21 +2,23 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use oxagaudiotool::OxAgAudioTool;
+use robot_for_visualizer::RobotForVisualizer;
 use robotics_lib::energy::Energy;
 use robotics_lib::event::events::Event;
 use robotics_lib::interface::{get_score, robot_map};
 use robotics_lib::runner::backpack::BackPack;
-use robotics_lib::runner::{Robot, Runnable};
+use robotics_lib::runner::{Robot, Runnable, Runner};
 use robotics_lib::utils::LibError;
 use robotics_lib::world::coordinates::Coordinate;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::tile::Content::Garbage;
+use robotics_lib::world::world_generator::Generator;
 use robotics_lib::world::World;
 use sense_and_find_by_rustafariani::{Action, Lssf};
 use spyglass::spyglass::Spyglass;
 
 use crate::bot::sound::populate_sound;
-use crate::{backpack_content, energy, events, points, positions, robot_view};
+use crate::{backpack_content, energy, points, positions, robot_view};
 
 mod movement;
 mod print;
@@ -224,6 +226,9 @@ impl Runnable for Scrapbot {
     fn process_tick(&mut self, world: &mut World) {
         self.routine(world);
 
+        self.store_environmental_condition(world);
+        self.store_tiles(world);
+
         let mut update_points = points.lock().unwrap();
         let mut update_robot_view = robot_view.lock().unwrap();
         let mut update_positions = positions.lock().unwrap();
@@ -240,8 +245,9 @@ impl Runnable for Scrapbot {
         update_backpack_content.clone_from(self.get_backpack().get_contents()); // was clone before
     }
     fn handle_event(&mut self, event: Event) {
-        let mut update_events = events.lock().unwrap();
-        update_events.push(event.clone());
+        // let mut update_events = events.lock().unwrap();
+        // update_events.push(event.clone());
+        self.store_event(event);
     }
     fn get_energy(&self) -> &Energy {
         &self.robot.energy
@@ -260,5 +266,11 @@ impl Runnable for Scrapbot {
     }
     fn get_backpack_mut(&mut self) -> &mut BackPack {
         &mut self.robot.backpack
+    }
+}
+
+impl RobotForVisualizer for Scrapbot {
+    fn get_runner(generator: &mut impl Generator) -> Result<Runner, LibError> {
+        Runner::new(Box::new(Scrapbot::new()), generator)
     }
 }

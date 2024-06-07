@@ -13,6 +13,10 @@ sense_and_find_by_rustafariani = { registry = "kellnr" }
 pmp_collect_all = { registry = "kellnr" }
 oxagworldgenerator = { registry = "kellnr" }
 oxagaudiotool = { registry = "kellnr" }
+
+# our visualizer
+robot-for-visualizer = { git = "ssh://git@github.com/RustyPripyat/robot-for-visualizer.git" }
+
 # map viewer
 sdl2 = "0.36.0"
 colored = "2.1.0"

@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use oxagaudiotool::sound_config::OxAgSoundConfig;
 use robotics_lib::event::events::Event;
 use robotics_lib::world::tile::Content::Garbage;
-use std::collections::HashMap;
 
 pub(crate) fn populate_sound() -> HashMap<Event, OxAgSoundConfig> {
     let mut map = HashMap::new();
