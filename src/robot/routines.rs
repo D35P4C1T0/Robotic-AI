@@ -1,8 +1,10 @@
+use robotics_lib::event::events::Event::Terminated;
+use robotics_lib::runner::Runnable;
 use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::World;
 
-use crate::bot::{BotAction, Scrapbot, MAX_BACKPACK_ITEMS};
+use crate::robot::{BotAction, Scrapbot, MAX_BACKPACK_ITEMS};
 
 pub(crate) enum RoutineResult {
     Success,
@@ -17,7 +19,10 @@ pub(crate) enum RoutineResult {
 }
 
 impl Scrapbot {
-    pub fn routine_collect_trash(&mut self, world: &mut World) -> Result<RoutineResult, LibError> {
+    pub(crate) fn routine_collect_trash(
+        &mut self,
+        world: &mut World,
+    ) -> Result<RoutineResult, LibError> {
         self.full_recharge();
         self.lssf_update(world, None)?;
 
@@ -67,7 +72,8 @@ impl Scrapbot {
             return Ok(RoutineResult::NoChanges);
         }
 
-        if self.get_remaining_backpack_space() < MAX_BACKPACK_ITEMS / 6 {
+        if self.get_remaining_backpack_space() < (MAX_BACKPACK_ITEMS as f32 / 6f32).floor() as usize
+        {
             return Ok(RoutineResult::PartiallyFilledBackpack);
         }
 
@@ -75,7 +81,10 @@ impl Scrapbot {
         Ok(RoutineResult::Success)
     }
 
-    pub fn routine_empty_trash(&mut self, world: &mut World) -> Result<RoutineResult, LibError> {
+    pub(crate) fn routine_empty_trash(
+        &mut self,
+        world: &mut World,
+    ) -> Result<RoutineResult, LibError> {
         self.full_recharge();
         self.lssf_update(world, None)?;
 
@@ -131,11 +140,11 @@ impl Scrapbot {
     // They call me the wanderer
     // Yeah, the wanderer
     // I roam around, around, around
-    pub fn routine_wander_to_next_quadrant(
+    pub(crate) fn routine_wander_to_next_quadrant(
         &mut self,
         world: &mut World,
     ) -> Result<RoutineResult, LibError> {
-        // This routine is called when the bot has no more trash to collect
+        // This routine is called when the robot has no more trash to collect
         self.full_recharge();
         let new_location = self.next_quadrant_clockwise(world);
 
@@ -148,7 +157,7 @@ impl Scrapbot {
             })
     }
 
-    pub fn routine_reach_closest_undiscovered_tile(
+    pub(crate) fn routine_reach_closest_undiscovered_tile(
         &mut self,
         world: &mut World,
     ) -> Result<RoutineResult, LibError> {
@@ -171,9 +180,10 @@ impl Scrapbot {
         }
     }
 
-    pub fn routine(&mut self, world: &mut World) {
+    pub(crate) fn routine(&mut self, world: &mut World) {
         if self.quadrants_visited.values().all(|&v| v) {
             println!("All quadrants visited, stopping");
+            self.handle_event(Terminated);
             return;
         }
 

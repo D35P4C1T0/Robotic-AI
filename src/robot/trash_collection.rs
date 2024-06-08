@@ -6,11 +6,11 @@ use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::World;
 
-use crate::bot::Scrapbot;
+use crate::robot::Scrapbot;
 
 impl Scrapbot {
     // deprecated
-    pub fn collect_trash_in_front_of(
+    pub(crate) fn collect_trash_in_front_of(
         &mut self,
         world: &mut World,
         direction: Direction,
@@ -28,7 +28,7 @@ impl Scrapbot {
         }
     }
 
-    pub fn drop_trash_into_bin_in_front_of(
+    pub(crate) fn drop_trash_into_bin_in_front_of(
         &mut self,
         world: &mut World,
         direction: Direction,
@@ -62,7 +62,7 @@ impl Scrapbot {
     }
 
     // call this when you're relatively near some trash
-    pub fn collect_new_trash(
+    pub(crate) fn collect_new_trash(
         &mut self,
         world: &mut World,
         range: usize,
@@ -85,7 +85,7 @@ impl Scrapbot {
         }
     }
 
-    pub fn collect_new_trash_fill_backpack(
+    pub(crate) fn collect_new_trash_fill_backpack(
         &mut self,
         world: &mut World,
     ) -> Result<usize, LibError> {
@@ -93,7 +93,7 @@ impl Scrapbot {
         let portion_of_map = (robot_map(world).unwrap().len() / 100) * 15;
         self.collect_new_trash(world, portion_of_map, free_backpack_space)
     }
-    pub fn lssf_search_trash(&mut self, world: &mut World) -> Result<bool, LibError> {
+    pub(crate) fn lssf_search_trash(&mut self, world: &mut World) -> Result<bool, LibError> {
         let result = self.lssf_update(world, None);
         match result {
             Ok(_) => {
@@ -126,7 +126,7 @@ impl Scrapbot {
             }
         }
     }
-    pub fn lssf_search_bins(&mut self, world: &mut World) -> Result<bool, LibError> {
+    pub(crate) fn lssf_search_bins(&mut self, world: &mut World) -> Result<bool, LibError> {
         let result = self.lssf_update(world, None);
         match result {
             Ok(_) => {

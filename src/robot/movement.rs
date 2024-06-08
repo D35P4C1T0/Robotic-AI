@@ -7,7 +7,7 @@ use robotics_lib::world::tile::{Tile, TileType};
 use robotics_lib::world::World;
 use sense_and_find_by_rustafariani::Action;
 
-use crate::bot::{BotAction, Scrapbot};
+use crate::robot::{BotAction, Scrapbot};
 
 fn is_undiscovered_tile(known_map: &[Vec<Option<Tile>>], x: usize, y: usize) -> bool {
     known_map[x][y].is_none()
@@ -18,7 +18,7 @@ fn valid_coords(x: i32, y: i32, map_size: i32) -> bool {
 }
 
 impl Scrapbot {
-    pub fn bfs_find_closest_undiscovered_tile(
+    pub(crate) fn bfs_find_closest_undiscovered_tile(
         &mut self,
         world: &mut World,
     ) -> Option<(usize, usize)> {
@@ -76,7 +76,7 @@ impl Scrapbot {
         }
         self.lssf = Some(old_lssf);
     }
-    pub fn run_action_vec_and_then(
+    pub(crate) fn run_action_vec_and_then(
         &mut self,
         world: &mut World,
         action: BotAction,
@@ -143,7 +143,7 @@ impl Scrapbot {
         }
     }
 
-    pub fn get_last_move_direction(&self) -> Direction {
+    pub(crate) fn get_last_move_direction(&self) -> Direction {
         match self.actions_vec.as_ref().unwrap().last().unwrap() {
             Action::North => Direction::Up,
             Action::South => Direction::Down,
@@ -153,7 +153,7 @@ impl Scrapbot {
         }
     }
 
-    pub fn next_quadrant_clockwise(&mut self, world: &mut World) -> (usize, usize) {
+    pub(crate) fn next_quadrant_clockwise(&mut self, world: &mut World) -> (usize, usize) {
         let map_side = robot_map(world).unwrap().len();
         let quadrants_centers = [
             (map_side / 4, map_side / 4),

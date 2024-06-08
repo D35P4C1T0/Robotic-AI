@@ -1,11 +1,10 @@
 use std::collections::HashMap;
-use std::hash::Hash;
 
 use oxagaudiotool::OxAgAudioTool;
 use robot_for_visualizer::RobotForVisualizer;
 use robotics_lib::energy::Energy;
 use robotics_lib::event::events::Event;
-use robotics_lib::interface::{get_score, robot_map};
+use robotics_lib::interface::robot_map;
 use robotics_lib::runner::backpack::BackPack;
 use robotics_lib::runner::{Robot, Runnable, Runner};
 use robotics_lib::utils::LibError;
@@ -17,8 +16,7 @@ use robotics_lib::world::World;
 use sense_and_find_by_rustafariani::{Action, Lssf};
 use spyglass::spyglass::Spyglass;
 
-use crate::bot::sound::populate_sound;
-use crate::{backpack_content, energy, points, positions, robot_view};
+use crate::robot::sound::populate_sound;
 
 mod movement;
 mod print;
@@ -49,6 +47,12 @@ pub struct Scrapbot {
     pub bot_action: BotAction,
     pub search_radius: Option<usize>,
     pub quadrants_visited: HashMap<usize, bool>,
+}
+
+impl Default for Scrapbot {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Scrapbot {
@@ -189,14 +193,14 @@ impl Scrapbot {
     }
 
     pub fn use_discovery_tools(&mut self, world: &mut World) {
-        // to be used when the bot is stuck or at first start
+        // to be used when the robot is stuck or at first start
         self.full_recharge();
         self.spyglass_explore(world);
     }
 
     pub fn util_sort_points_from_nearest(&mut self, content: Content) {
         // Take the coordinates vector to be ordered based on the content type
-        let mut coords_vec_to_be_ordered = if content == Content::Garbage(0) {
+        let mut coords_vec_to_be_ordered = if content == Garbage(0) {
             self.trash_coords.take()
         } else {
             self.bin_coords.take()
@@ -214,7 +218,7 @@ impl Scrapbot {
         }
 
         // Put back the ordered coordinates vector based on the content type
-        if content == Content::Garbage(0) {
+        if content == Garbage(0) {
             self.trash_coords = coords_vec_to_be_ordered;
         } else {
             self.bin_coords = coords_vec_to_be_ordered;
@@ -228,21 +232,6 @@ impl Runnable for Scrapbot {
 
         self.store_environmental_condition(world);
         self.store_tiles(world);
-
-        let mut update_points = points.lock().unwrap();
-        let mut update_robot_view = robot_view.lock().unwrap();
-        let mut update_positions = positions.lock().unwrap();
-        let mut update_energy = energy.lock().unwrap();
-        let mut update_backpack_content = backpack_content.lock().unwrap();
-
-        *update_positions = (
-            self.robot.coordinate.get_row(),
-            self.robot.coordinate.get_col(),
-        );
-        *update_points = get_score(world);
-        *update_robot_view = robot_map(world).unwrap();
-        *update_energy = self.robot.energy.get_energy_level();
-        update_backpack_content.clone_from(self.get_backpack().get_contents()); // was clone before
     }
     fn handle_event(&mut self, event: Event) {
         // let mut update_events = events.lock().unwrap();
