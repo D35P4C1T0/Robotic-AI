@@ -184,7 +184,7 @@ impl Scrapbot {
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();
         lssf.update_map(robot_map(world).unwrap().as_ref());
-        let result = lssf.smart_sensing_centered(radius, world, self, 1);
+        let result = lssf.smart_sensing_centered(radius, world, self, 0);
         self.lssf = Some(lssf);
 
         // Return result
