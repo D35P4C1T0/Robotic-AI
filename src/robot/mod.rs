@@ -16,8 +16,6 @@ use robotics_lib::world::World;
 use sense_and_find_by_rustafariani::{Action, Lssf};
 use spyglass::spyglass::Spyglass;
 
-use crate::robot::sound::populate_sound;
-
 mod movement;
 mod print;
 mod routines;
@@ -38,7 +36,7 @@ pub enum BotAction {
 
 pub struct Scrapbot {
     pub robot: Robot,
-    pub audio: OxAgAudioTool,
+    pub audio: Option<OxAgAudioTool>,
     pub bin_coords: Option<Vec<(usize, usize)>>,
     pub trash_coords: Option<Vec<(usize, usize)>>,
     pub ticks: usize,
@@ -59,7 +57,7 @@ impl Scrapbot {
     pub fn new() -> Scrapbot {
         Scrapbot {
             robot: Robot::new(),
-            audio: OxAgAudioTool::new(populate_sound(), HashMap::new(), HashMap::new()).unwrap(),
+            audio: None,
             bin_coords: None,
             trash_coords: None,
             ticks: 0,
@@ -261,5 +259,8 @@ impl Runnable for Scrapbot {
 impl RobotForVisualizer for Scrapbot {
     fn get_runner(generator: &mut impl Generator) -> Result<Runner, LibError> {
         Runner::new(Box::new(Scrapbot::new()), generator)
+    }
+    fn set_audio_path(&mut self, path: String) {
+        self.populate_sounds_given_path(path);
     }
 }
