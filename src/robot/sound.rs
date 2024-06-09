@@ -2,12 +2,16 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use std::path::PathBuf;
-use oxagaudiotool::OxAgAudioTool;
+use std::sync::Mutex;
 
+use lazy_static::lazy_static;
 use oxagaudiotool::sound_config::OxAgSoundConfig;
 use robotics_lib::event::events::Event;
 use robotics_lib::world::tile::Content::Garbage;
-use crate::robot::Scrapbot;
+
+lazy_static! {
+    static ref SOUNDS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+}
 
 #[derive(Debug)]
 struct MissingFilesError {
@@ -41,7 +45,18 @@ fn check_mp3_files(directory: &str, filenames: Vec<&str>) -> Result<(), Box<dyn 
     }
 }
 
-fn populate_sounds(folder_path: String) -> HashMap<Event, OxAgSoundConfig> {
+pub(crate) fn populate_sounds() -> HashMap<Event, OxAgSoundConfig> {
+    let directory_guard = SOUNDS_DIR.lock().unwrap();
+    let folder_path = directory_guard
+        .as_ref()
+        .ok_or("Directory not set")
+        .unwrap()
+        .clone()
+        .to_str()
+        .unwrap()
+        .to_string();
+    // 🥴
+
     let mut map = HashMap::new();
     map.insert(
         Event::Terminated,
@@ -62,20 +77,22 @@ fn populate_sounds(folder_path: String) -> HashMap<Event, OxAgSoundConfig> {
     map
 }
 
-impl Scrapbot {
-    pub(crate) fn populate_sounds_given_path(&mut self, folder_path: String) {
-        // check if files exist in the folder
-        let files_vec = vec!["terminated.mp3", "get_garbage.mp3", "throw_garbage.mp3"];
-        match check_mp3_files(&folder_path, files_vec) {
-            Ok(_) => {
-                // populate sounds
-                let sounds_hashmap = populate_sounds(folder_path);
-                self.audio = Some(OxAgAudioTool::new(sounds_hashmap, HashMap::new(), HashMap::new()).unwrap());
-            }
-            Err(err) => {
-                eprintln!("Error: {}", err);
-                std::process::exit(1);
-            }
+fn set_sounds_directory(path: &str) {
+    let mut directory = SOUNDS_DIR.lock().unwrap();
+    *directory = Some(PathBuf::from(path));
+}
+
+pub(crate) fn populate_sounds_given_path(folder_path: String) {
+    // check if files exist in the folder
+    let files_vec = vec!["terminated.mp3", "get_garbage.mp3", "throw_garbage.mp3"];
+    match check_mp3_files(&folder_path, files_vec) {
+        Ok(_) => {
+            // populate lazy static sounds directory
+            set_sounds_directory(&folder_path);
+        }
+        Err(err) => {
+            eprintln!("Error: {}", err);
+            std::process::exit(1);
         }
     }
 }
