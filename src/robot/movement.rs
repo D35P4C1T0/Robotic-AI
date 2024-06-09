@@ -45,8 +45,8 @@ impl Scrapbot {
         &mut self,
         world: &mut World,
     ) -> Option<(usize, usize)> {
-        let robot_x = self.get_coordinate().get_row();
-        let robot_y = self.get_coordinate().get_col();
+        let robot_x = self.get_coordinate().get_col();
+        let robot_y = self.get_coordinate().get_row();
         let known_map = robot_map(world).unwrap();
         let map_size = known_map.len() as i32;
         let mut visited = vec![vec![false; map_size as usize]; map_size as usize];
@@ -89,7 +89,7 @@ impl Scrapbot {
     }
     pub fn populate_action_vec_given_point(&mut self, coordinate: (usize, usize)) {
         let old_lssf = self.lssf.take().unwrap();
-        match old_lssf.get_action_vec(coordinate.0, coordinate.1) {
+        match old_lssf.get_action_vec(coordinate.0, coordinate.1) { // col(x), row(y)
             Ok(actions) => {
                 println!("popualted action vec!");
                 self.actions_vec = Some(actions);
@@ -181,10 +181,10 @@ impl Scrapbot {
         let map_side = robot_map(world).unwrap().len();
         let quadrants_centers = [
             (map_side / 4, map_side / 4),
-            (map_side / 4, (map_side / 4) * 3),
+            ((map_side / 4)*3, map_side / 4),
             ((map_side / 4) * 3, (map_side / 4) * 3),
-            ((map_side / 4) * 3, map_side / 4),
-        ];
+            (map_side / 4, (map_side / 4)*3),
+        ]; // col,row
 
         // 1 | 2
         // -----
