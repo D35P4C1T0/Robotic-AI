@@ -182,7 +182,7 @@ impl Scrapbot {
         // or the nearest border distance so that the tool doesn't shit itself
         let world_dim = robot_map(world).unwrap().len();
         let mut radius = input_radius.unwrap_or(world_dim / 8);
-        radius = min(self.nearest_border_distance(world) - 1, radius);
+        radius = min(self.nearest_border_distance(world), radius);
         println!("nearest border: {}", self.nearest_border_distance(world));
         println!("radius: {}", radius);
         // Update LSSF
