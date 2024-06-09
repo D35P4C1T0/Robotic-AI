@@ -94,6 +94,8 @@ impl Scrapbot {
         self.handle_event(Event::EnergyRecharged(1000));
     }
 
+    
+    // unused, yet
     pub fn work_done(&mut self, world: &mut World) -> bool {
         let mut is_work_done = false;
         //number of unexplored tiles
@@ -181,6 +183,7 @@ impl Scrapbot {
 
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();
+        lssf.update_map(robot_map(world).unwrap().as_ref());
         let result = lssf.smart_sensing_centered(radius, world, self, 1);
         self.lssf = Some(lssf);
 

@@ -68,6 +68,7 @@ impl Scrapbot {
         let old_lssf = self.lssf.take().unwrap();
         match old_lssf.get_action_vec(coordinate.0, coordinate.1) {
             Ok(actions) => {
+                println!("popualted action vec!");
                 self.actions_vec = Some(actions);
             }
             Err(err) => {
