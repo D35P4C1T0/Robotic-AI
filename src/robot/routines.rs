@@ -34,6 +34,8 @@ impl Scrapbot {
         let mut trash_gathered = 0;
         let mut bad_trash_coords = vec![];
         let trash_coords = self.trash_coords.take().unwrap();
+        
+        println!("Trash found: {:?}", trash_coords);
 
         for coords in &trash_coords {
             if self.get_remaining_backpack_space() == 0 {
@@ -99,6 +101,7 @@ impl Scrapbot {
         }
 
         let bin_coords = self.bin_coords.take().unwrap_or_default();
+        println!("Bins found: {:?}", bin_coords);
         let mut bad_bins_vec = vec![];
 
         for coords in &bin_coords {
