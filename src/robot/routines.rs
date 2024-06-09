@@ -34,7 +34,7 @@ impl Scrapbot {
         let mut trash_gathered = 0;
         let mut bad_trash_coords = vec![];
         let trash_coords = self.trash_coords.take().unwrap();
-        
+
         println!("Trash found: {:?}", trash_coords);
 
         for coords in &trash_coords {

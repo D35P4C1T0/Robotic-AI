@@ -95,7 +95,6 @@ impl Scrapbot {
         self.handle_event(Event::EnergyRecharged(1000));
     }
 
-
     // unused, yet
     pub fn work_done(&mut self, world: &mut World) -> bool {
         let mut is_work_done = false;
@@ -181,7 +180,8 @@ impl Scrapbot {
         self.full_recharge();
         // Use the specified radius if provided, otherwise use default (1/8 of map size)
         // or the nearest border distance so that the tool doesn't shit itself
-        let mut radius = input_radius.unwrap_or_else(|| robot_map(world).unwrap().len() / 8);
+        let world_dim = robot_map(world).unwrap().len();
+        let mut radius = input_radius.unwrap_or(world_dim / 8);
         radius = min(self.nearest_border_distance(world) - 1, radius);
         println!("nearest border: {}", self.nearest_border_distance(world));
         println!("radius: {}", radius);
@@ -190,7 +190,7 @@ impl Scrapbot {
         println!("pre update valid_offset: {}", lssf.is_offset_valid());
         lssf.update_map(robot_map(world).unwrap().as_ref());
         println!("post update valid_offset: {}", lssf.is_offset_valid());
-        let result = lssf.smart_sensing_centered(radius, world, self, 0);
+        let result = lssf.smart_sensing_centered(radius, world, self, world_dim - 1);
         self.lssf = Some(lssf);
 
         // Return result
