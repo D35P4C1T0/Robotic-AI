@@ -183,6 +183,8 @@ impl Scrapbot {
 
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();
+        let valid_offset = lssf.is_offset_valid(); // ????
+        println!("valid_offset: {}", valid_offset);
         lssf.update_map(robot_map(world).unwrap().as_ref());
         let result = lssf.smart_sensing_centered(radius, world, self, 0);
         self.lssf = Some(lssf);
