@@ -150,6 +150,7 @@ impl Scrapbot {
         // This routine is called when the robot has no more trash to collect
         self.full_recharge();
         let new_location = self.next_quadrant_clockwise(world);
+        println!("Wandering to {:?}", new_location);
 
         self.populate_action_vec_given_point(new_location);
         self.run_action_vec_and_then(world, BotAction::Walk)
@@ -166,6 +167,7 @@ impl Scrapbot {
     ) -> Result<RoutineResult, LibError> {
         self.full_recharge();
         let next_location = self.bfs_find_closest_undiscovered_tile(world);
+        println!("Wandering to undiscovered tile at {:?}", next_location);
         match next_location {
             Some(location) => {
                 self.populate_action_vec_given_point(location);
