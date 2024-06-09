@@ -185,12 +185,12 @@ impl Scrapbot {
         radius = min(self.nearest_border_distance(world), radius);
         println!("nearest border: {}", self.nearest_border_distance(world));
         println!("radius: {}", radius);
+
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();
-        println!("pre update valid_offset: {}", lssf.is_offset_valid());
-        lssf.update_map(robot_map(world).unwrap().as_ref());
-        println!("post update valid_offset: {}", lssf.is_offset_valid());
         let result = lssf.smart_sensing_centered(radius, world, self, world_dim - 1);
+        lssf.update_map(robot_map(world).unwrap().as_ref());
+        println!("pre update valid_offset: {}", lssf.is_offset_valid());
         self.lssf = Some(lssf);
 
         // Return result
