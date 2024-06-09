@@ -89,13 +89,14 @@ impl Scrapbot {
     }
     pub fn populate_action_vec_given_point(&mut self, coordinate: (usize, usize)) {
         let old_lssf = self.lssf.take().unwrap();
-        match old_lssf.get_action_vec(coordinate.0, coordinate.1) { // col(x), row(y)
+        match old_lssf.get_action_vec(coordinate.0, coordinate.1) {
+            // col(x), row(y)
             Ok(actions) => {
-                println!("popualted action vec!");
+                println!("Populated action vec!: {:?}", actions);
                 self.actions_vec = Some(actions);
             }
             Err(err) => {
-                println!("Error planning next move: {:?}", err);
+                println!("Error planning next move to: {:?} | {:?}", coordinate, err);
             }
         }
         self.lssf = Some(old_lssf);
@@ -107,6 +108,13 @@ impl Scrapbot {
     ) -> Result<usize, LibError> {
         // Run the actions vector if it exists
         if let Some(mut actions) = self.actions_vec.take() {
+
+            // check if the action vector is empty
+            if actions.is_empty() {
+                println!("No actions to perform");
+                return Err(LibError::CannotWalk);
+            }
+
             // Get the last move direction from the first element of the actions vector
             let last_move_direction = match actions.remove(0) {
                 Action::North => Direction::Up,
