@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::collections::HashMap;
 
 use oxagaudiotool::OxAgAudioTool;
@@ -179,7 +180,8 @@ impl Scrapbot {
     ) -> Result<(), LibError> {
         self.full_recharge();
         // Use the specified radius if provided, otherwise use default (1/8 of map size)
-        let radius = input_radius.unwrap_or_else(|| robot_map(world).unwrap().len() / 8);
+        let mut radius = input_radius.unwrap_or_else(|| robot_map(world).unwrap().len() / 8);
+        radius = min(self.nearest_border_distance(world), radius);
 
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();

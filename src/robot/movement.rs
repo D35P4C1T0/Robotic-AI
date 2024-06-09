@@ -18,6 +18,29 @@ fn valid_coords(x: i32, y: i32, map_size: i32) -> bool {
 }
 
 impl Scrapbot {
+    pub(crate) fn nearest_border_distance(&self, world: &World) -> usize {
+        let robot_pos = self.get_coordinate();
+        // Assumiamo che robot_map(world) restituisca una griglia quadrata,
+        // quindi prendiamo la lunghezza di uno dei lati per calcolare world_size.
+
+        let world_size = robot_map(world).unwrap().len();
+
+        let row = robot_pos.get_row();
+        let col = robot_pos.get_col();
+
+        // Calcola le distanze dai quattro bordi della mappa.
+        let dist_top = row; // Distanza dal bordo superiore.
+        let dist_bottom = world_size - row - 1; // Distanza dal bordo inferiore.
+        let dist_left = col; // Distanza dal bordo sinistro.
+        let dist_right = world_size - col - 1; // Distanza dal bordo destro.
+
+        // Restituisce la distanza minima tra quelle calcolate.
+        *[dist_top, dist_bottom, dist_left, dist_right]
+            .iter()
+            .min()
+            .unwrap()
+    }
+
     pub(crate) fn bfs_find_closest_undiscovered_tile(
         &mut self,
         world: &mut World,
