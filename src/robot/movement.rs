@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use robotics_lib::interface::{go, robot_map, teleport, Direction};
+use robotics_lib::interface::{Direction, go, robot_map, robot_view, teleport};
 use robotics_lib::runner::Runnable;
 use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::{Tile, TileType};
@@ -13,50 +13,37 @@ fn is_undiscovered_tile(known_map: &[Vec<Option<Tile>>], x: usize, y: usize) -> 
     known_map[x][y].is_none()
 }
 
-fn valid_coords(x: i32, y: i32, map_size: i32) -> bool {
+fn valid_coords_no_border(x: i32, y: i32, map_size: i32) -> bool {
     x >= 0 && y >= 0 && x < map_size && y < map_size
 }
 
 impl Scrapbot {
-    pub(crate) fn go_to_map_center_and_update_lssf(
-        &mut self,
-        world: &mut World,
-    ) -> Result<(), LibError> {
-        println!("Going to map center");
+    pub(crate) fn move_away_from_border(&mut self, world: &mut World) {
         let map_size = robot_map(world).unwrap().len();
-        let center = map_size / 2;
+        let robot_pos = self.get_coordinate();
+        let (robot_x, robot_y) = (robot_pos.get_col(), robot_pos.get_row());
 
-        // Get the current coordinates of the robot
-        let (robot_x, robot_y) = (
-            self.get_coordinate().get_col(),
-            self.get_coordinate().get_row(),
-        );
+        let mut min_distance = map_size;
+        let mut best_direction = Direction::Up;
 
-        // Calculate the number of moves needed in each direction
-        let (horizontal_moves, horizontal_direction) = if robot_x < center {
-            (center - robot_x, Direction::Right)
-        } else {
-            (robot_x - center, Direction::Left)
-        };
-
-        let (vertical_moves, vertical_direction) = if robot_y < center {
-            (center - robot_y, Direction::Down)
-        } else {
-            (robot_y - center, Direction::Up)
-        };
-
-        // Move horizontally
-        for _ in 0..horizontal_moves {
-            go(self, world, horizontal_direction.clone())?;
+        for (dx, dy) in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            let (nx, ny) = (robot_x as i32 + dx, robot_y as i32 + dy);
+            if valid_coords_no_border(nx, ny, map_size as i32) {
+                let distance = self.nearest_border_distance(world);
+                if distance < min_distance {
+                    min_distance = distance;
+                    best_direction = match (dx, dy) {
+                        (1, 0) => Direction::Right,
+                        (-1, 0) => Direction::Left,
+                        (0, 1) => Direction::Down,
+                        (0, -1) => Direction::Up,
+                        _ => Direction::Up,
+                    };
+                }
+            }
         }
 
-        // Move vertically
-        for _ in 0..vertical_moves {
-            go(self, world, vertical_direction.clone())?;
-        }
-
-        // Uncomment the line below to update LSSF
-        self.lssf_update(world, Some(robot_map(world).unwrap().len()))
+        go(self, world, best_direction).ok();
     }
 
     pub(crate) fn nearest_border_distance(&self, world: &World) -> usize {
@@ -82,52 +69,87 @@ impl Scrapbot {
             .unwrap()
     }
 
-    pub(crate) fn bfs_find_closest_undiscovered_tile(
-        &mut self,
-        world: &mut World,
-    ) -> Option<(usize, usize)> {
-        let robot_x = self.get_coordinate().get_col();
-        let robot_y = self.get_coordinate().get_row();
+    fn opposite_border_coords(x: i32, y: i32, map_size: i32) -> (i32, i32) {
+        let new_x = if x < 4 { map_size - 5 } else if x >= map_size - 4 { 4 } else { x };
+        let new_y = if y < 4 { map_size - 5 } else if y >= map_size - 4 { 4 } else { y };
+        (new_x, new_y)
+    }
+
+    pub fn find_closest_undiscovered_tile(&mut self, world: &mut World) -> Option<(usize, usize)> {
+        let robot_x = self.get_coordinate().get_row();
+        let robot_y = self.get_coordinate().get_col();
         let known_map = robot_map(world).unwrap();
         let map_size = known_map.len() as i32;
+        let border_limit = 4; // Distance from the border to be avoided
         let mut visited = vec![vec![false; map_size as usize]; map_size as usize];
         let mut queue = VecDeque::new();
 
         // Mark impassable tiles as visited
-        for i in 0..map_size {
-            for j in 0..map_size {
-                if let Some(tile) = known_map[i as usize][j as usize].clone() {
+        for i in 0..visited.len() {
+            for j in 0..visited[i].len() {
+                if let Some(tile) = &known_map[i][j] {
                     match tile.tile_type {
-                        TileType::Lava | TileType::DeepWater | TileType::Wall => {
-                            visited[i as usize][j as usize] = true;
-                        }
+                        TileType::Lava | TileType::DeepWater | TileType::Wall => visited[i][j] = true,
                         _ => {}
                     }
                 }
             }
         }
 
+        // Start BFS from the robot's position
         queue.push_back((robot_x, robot_y));
         visited[robot_x][robot_y] = true;
 
-        while let Some((x_u, y_u)) = queue.pop_front() {
-            if is_undiscovered_tile(&known_map, x_u, y_u) {
-                return Some((y_u, x_u));
-            }
+        while let Some((x, y)) = queue.pop_front() {
+            let x_i = x as i32;
+            let y_i = y as i32;
 
             for (dx, dy) in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
-                let (x_next, y_next) = (x_u as i32 + dx, y_u as i32 + dy);
-                if valid_coords(x_next, y_next, map_size)
-                    && !visited[x_next as usize][y_next as usize]
-                {
-                    queue.push_back((x_next as usize, y_next as usize));
-                    visited[x_next as usize][y_next as usize] = true;
+                let (nx, ny) = (x_i + dx, y_i + dy);
+                if Self::valid_coords(nx, ny, map_size, border_limit) {
+                    let (nx_usize, ny_usize) = (nx as usize, ny as usize);
+                    if !visited[nx_usize][ny_usize] {
+                        if known_map[nx_usize][ny_usize].is_none() {
+                            // Found an undiscovered tile, now return any adjacent discovered tile
+                            for (adx, ady) in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                                let (ax, ay) = (nx + adx, ny + ady);
+                                if Self::valid_coords(ax, ay, map_size, border_limit) {
+                                    let (ax_usize, ay_usize) = (ax as usize, ay as usize);
+                                    if known_map[ax_usize][ay_usize].is_some() {
+                                        return Some((ax_usize, ay_usize));
+                                    }
+                                }
+                            }
+                        }
+                        queue.push_back((nx_usize, ny_usize));
+                        visited[nx_usize][ny_usize] = true;
+                    }
+                } else {
+                    // Handle the case where the robot is at the border
+                    let (opposite_x, opposite_y) = Self::opposite_border_coords(nx, ny, map_size);
+                    if Self::valid_coords(opposite_x, opposite_y, map_size, border_limit) {
+                        let (opposite_usize_x, opposite_usize_y) = (opposite_x as usize, opposite_y as usize);
+                        if !visited[opposite_usize_x][opposite_usize_y] {
+                            if known_map[opposite_usize_x][opposite_usize_y].is_some() {
+                                return Some((opposite_usize_x, opposite_usize_y));
+                            }
+                            queue.push_back((opposite_usize_x, opposite_usize_y));
+                            visited[opposite_usize_x][opposite_usize_y] = true;
+                        }
+                    }
                 }
             }
         }
 
-        None
+        // If no undiscovered tile is found, return a coordinate near the center
+        Some((map_size as usize / 2, map_size as usize / 2))
     }
+
+    fn valid_coords(x: i32, y: i32, map_size: i32, border_limit: i32) -> bool {
+        x >= border_limit && x < map_size - border_limit && y >= border_limit && y < map_size - border_limit
+    }
+
+
     pub fn populate_action_vec_given_point(&mut self, coordinate: (usize, usize)) {
         let old_lssf = self.lssf.take().unwrap();
         match old_lssf.get_action_vec(coordinate.0, coordinate.1) {
@@ -155,14 +177,21 @@ impl Scrapbot {
                 return Err(LibError::CannotWalk);
             }
 
+            let mut last_move_direction = None;
+
             // Get the last move direction from the first element of the actions vector
-            let last_move_direction = match actions.remove(0) {
-                Action::North => Direction::Up,
-                Action::South => Direction::Down,
-                Action::East => Direction::Right,
-                Action::West => Direction::Left,
-                _ => Direction::Up, // Default to Up, though ideally should never hit this case
-            };
+            match action {
+                BotAction::Destroy | BotAction::Put => {
+                    last_move_direction = match actions.remove(0) {
+                        Action::North => Some(Direction::Up),
+                        Action::South => Some(Direction::Down),
+                        Action::East => Some(Direction::Right),
+                        Action::West => Some(Direction::Left),
+                        _ => None, // Default to Up, though ideally should never hit this case
+                    };
+                }
+                _ => (),
+            }
 
             // Execute the actions in the vector
             self.full_recharge();
@@ -191,8 +220,8 @@ impl Scrapbot {
             // Perform the final action
             self.full_recharge();
             let result = match action {
-                BotAction::Destroy => self.collect_trash_in_front_of(world, last_move_direction),
-                BotAction::Put => self.drop_trash_into_bin_in_front_of(world, last_move_direction),
+                BotAction::Destroy => self.collect_trash_in_front_of(world, last_move_direction.unwrap()),
+                BotAction::Put => self.drop_trash_into_bin_in_front_of(world, last_move_direction.unwrap()),
                 BotAction::Start => {
                     self.actions_vec.as_mut().unwrap().clear();
                     return Ok(0);

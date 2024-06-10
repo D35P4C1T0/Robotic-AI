@@ -1,6 +1,6 @@
 [package]
 name = "robotic_ai_prypiat"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 keywords = ["robotics", "ai", "unitn", "advanced_programming", "rust"]
 

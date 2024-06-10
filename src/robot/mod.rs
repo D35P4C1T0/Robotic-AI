@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{max, min};
 use std::collections::HashMap;
 
 use oxagaudiotool::OxAgAudioTool;
@@ -93,6 +93,14 @@ impl Scrapbot {
         self.handle_event(Event::EnergyRecharged(1000));
     }
 
+    fn round_down_to_nearest_odd(value: usize) -> usize {
+        if value % 2 == 0 {
+            max(value.saturating_sub(1),3)
+        } else {
+            value
+        }
+    }
+
     // unused, yet
     pub fn work_done(&mut self, world: &mut World) -> bool {
         let mut is_work_done = false;
@@ -113,25 +121,19 @@ impl Scrapbot {
             if (none_num as f64) / ((size * size) as f64) < threshold {
                 //checks if there are still trash in the world if not it returns that the
                 //job of the robot is done
-                let search_result = self.lssf_update(world, None);
-                match search_result {
-                    Ok(_) => {
-                        let old_lssf = self.lssf.take().unwrap();
-                        let next_trash_location = old_lssf.get_content_vec(&Garbage(0));
-                        match !next_trash_location.is_empty() {
-                            true => {
-                                is_work_done = false;
-                            }
-                            false => {
-                                is_work_done = true;
-                            }
-                        }
-                        self.lssf = Some(old_lssf);
+                self.lssf_update(world, None);
+
+                let old_lssf = self.lssf.take().unwrap();
+                let next_trash_location = old_lssf.get_content_vec(&Garbage(0));
+                match !next_trash_location.is_empty() {
+                    true => {
+                        is_work_done = false;
                     }
-                    Err(err) => {
-                        println!("Error finding garbage: {:?}", err);
+                    false => {
+                        is_work_done = true;
                     }
                 }
+                self.lssf = Some(old_lssf);
 
                 if self.trash_coords.is_none() {
                     // prima inizializzazione
@@ -174,30 +176,41 @@ impl Scrapbot {
         &mut self,
         world: &mut World,
         input_radius: Option<usize>,
-    ) -> Result<(), LibError> {
+    ) {
         self.full_recharge();
+        println!("lssf update called");
         // Use the specified radius if provided, otherwise use default (1/8 of map size)
         // or the nearest border distance so that the tool doesn't shit itself
-        let world_dim = robot_map(world).unwrap().len();
-        let mut radius = input_radius.unwrap_or(world_dim / 8);
-        radius = min(radius, self.nearest_border_distance(world));
 
-        println!("nearest border: {}", self.nearest_border_distance(world));
-        println!("radius: {}", radius);
+        let world_dim = robot_map(world).unwrap().len();
+        let mut scan_diameter = input_radius.unwrap_or(world_dim / 4);
+
+        println!("proposed scan diameter {}", scan_diameter);
+        scan_diameter = min(
+            Self::round_down_to_nearest_odd(scan_diameter),
+            Self::round_down_to_nearest_odd(self.nearest_border_distance(world) * 2),
+        );
+
+        // println!("nearest border: {}", self.nearest_border_distance(world));
+        println!("scan diameter: {}", scan_diameter);
 
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();
-        let result = lssf.smart_sensing_centered(radius, world, self, 5);
+        lssf.smart_sensing_centered(scan_diameter, world, self, 0).ok();
+        // self.spyglass_explore(world);
+        // lssf.update_map(&robot_map(world).unwrap());
+
         self.lssf = Some(lssf);
 
+
         // Return result
-        match result {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                println!("Error updating LSSF: {:?}", err);
-                Err(err)
-            }
-        }
+        // match result {
+        //     Ok(_) => Ok(()),
+        //     Err(err) => {
+        //         println!("Error updating LSSF: {:?}", err);
+        //         Err(err)
+        //     }
+        // }
     }
 
     pub fn use_discovery_tools(&mut self, world: &mut World) {

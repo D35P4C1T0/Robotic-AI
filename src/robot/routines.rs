@@ -24,7 +24,9 @@ impl Scrapbot {
         world: &mut World,
     ) -> Result<RoutineResult, LibError> {
         self.full_recharge();
-        self.lssf_update(world, None)?;
+        self.lssf_update(world, None);
+
+        println!("Routine collect trash called");
 
         if !self.lssf_search_trash(world)? {
             println!("No trash found");
@@ -88,7 +90,7 @@ impl Scrapbot {
         world: &mut World,
     ) -> Result<RoutineResult, LibError> {
         self.full_recharge();
-        self.lssf_update(world, None)?;
+        self.lssf_update(world, None);
 
         if self.get_content_quantity(&Content::Garbage(0)) == 0 {
             println!("No trash to drop");
@@ -166,8 +168,8 @@ impl Scrapbot {
         world: &mut World,
     ) -> Result<RoutineResult, LibError> {
         self.full_recharge();
-        self.lssf_update(world, None)?;
-        let next_location = self.bfs_find_closest_undiscovered_tile(world);
+        self.lssf_update(world, None);
+        let next_location = self.find_closest_undiscovered_tile(world);
         println!("Wandering to undiscovered tile at {:?}", next_location);
         match next_location {
             Some(location) => {
@@ -198,21 +200,17 @@ impl Scrapbot {
         self.bin_coords.get_or_insert_with(Vec::new);
         self.trash_coords.get_or_insert_with(Vec::new);
 
-        // if let BotAction::Start = self.bot_action {
-        //     self.bot_action = BotAction::Walk;
-        //     let big_first_scan_result = self.go_to_map_center_and_update_lssf(world);
-        //     match big_first_scan_result {
-        //         Ok(_) => println!("First scan successful"),
-        //         Err(err) => println!("Error scanning: {:?}", err),
-        //     }
-        // }
+        if let BotAction::Start = self.bot_action {
+            self.bot_action = BotAction::Walk;
+            self.move_away_from_border(world);
+        }
 
         if self.get_remaining_backpack_space()
             >= (MAX_BACKPACK_ITEMS as f32 * (0.6f32)).floor() as usize
         {
             if let Ok(result) = self.routine_collect_trash(world) {
                 match result {
-                    RoutineResult::Success => println!("Trash collected"),
+                    RoutineResult::Success => { println!("Trash collected"); self.handle_full_backpack(world) },
                     RoutineResult::NewResourcesNotFound => self.handle_wandering(world),
                     RoutineResult::FilledBackpack => self.handle_full_backpack(world),
                     _ => println!("Error planning next task"),
@@ -220,7 +218,7 @@ impl Scrapbot {
             } else {
                 println!("Error planning next task");
             }
-        } else if self.get_remaining_backpack_space() == 0 {
+        } else {
             println!("Backpack is full");
             self.handle_full_backpack(world);
         }
