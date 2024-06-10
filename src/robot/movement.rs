@@ -22,6 +22,7 @@ impl Scrapbot {
         &mut self,
         world: &mut World,
     ) -> Result<(), LibError> {
+        println!("Going to map center");
         let map_size = robot_map(world).unwrap().len();
         let center = map_size / 2;
 

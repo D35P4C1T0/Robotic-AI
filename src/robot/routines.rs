@@ -197,15 +197,14 @@ impl Scrapbot {
         self.bin_coords.get_or_insert_with(Vec::new);
         self.trash_coords.get_or_insert_with(Vec::new);
 
-        if let BotAction::Start = self.bot_action {
-            self.bot_action = BotAction::Walk;
-            let bid_first_scan_result = self.go_to_map_center_and_update_lssf(world);
-            match bid_first_scan_result {
-                Ok(_) => println!("First scan successful"),
-                Err(err) => println!("Error scanning: {:?}", err),
-            }
-        }
-    
+        // if let BotAction::Start = self.bot_action {
+        //     self.bot_action = BotAction::Walk;
+        //     let big_first_scan_result = self.go_to_map_center_and_update_lssf(world);
+        //     match big_first_scan_result {
+        //         Ok(_) => println!("First scan successful"),
+        //         Err(err) => println!("Error scanning: {:?}", err),
+        //     }
+        // }
 
         if self.get_remaining_backpack_space()
             >= (MAX_BACKPACK_ITEMS as f32 * (0.6f32)).floor() as usize
@@ -224,20 +223,15 @@ impl Scrapbot {
             println!("Backpack is full");
             self.handle_full_backpack(world);
         }
-
-        let random = rand::random::<f32>();
-        // 5% to wander to next unknown tile
-        if random < 0.05 {
-            match self.routine_reach_closest_undiscovered_tile(world) {
-                Ok(RoutineResult::Success) => println!("Went to next undiscovered tile"),
-                _ => println!("Error wandering"),
-            }
-        }
     }
 
     fn handle_wandering(&mut self, world: &mut World) {
-        match self.routine_wander_to_next_quadrant(world) {
-            Ok(RoutineResult::Success) => println!("Went to next quadrant"),
+        // match self.routine_wander_to_next_quadrant(world) {
+        //     Ok(RoutineResult::Success) => println!("Went to next quadrant"),
+        //     _ => println!("Error wandering"),
+        // }
+        match self.routine_reach_closest_undiscovered_tile(world) {
+            Ok(RoutineResult::Success) => println!("Went to next undiscovered tile"),
             _ => println!("Error wandering"),
         }
     }
