@@ -197,7 +197,7 @@ impl Scrapbot {
         self.bin_coords.get_or_insert_with(Vec::new);
         self.trash_coords.get_or_insert_with(Vec::new);
 
-        if self.bot_action == BotAction::Start {
+        if let BotAction::Start = self.bot_action {
             self.bot_action = BotAction::Walk;
             let bid_first_scan_result = self.go_to_map_center_and_update_lssf(world);
             match bid_first_scan_result {
@@ -205,6 +205,7 @@ impl Scrapbot {
                 Err(err) => println!("Error scanning: {:?}", err),
             }
         }
+    
 
         if self.get_remaining_backpack_space()
             >= (MAX_BACKPACK_ITEMS as f32 * (0.6f32)).floor() as usize
