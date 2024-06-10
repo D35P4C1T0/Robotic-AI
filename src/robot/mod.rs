@@ -95,7 +95,7 @@ impl Scrapbot {
 
     fn round_down_to_nearest_odd(value: usize) -> usize {
         if value % 2 == 0 {
-            max(value.saturating_sub(1),3)
+            max(value.saturating_sub(1), 3)
         } else {
             value
         }
@@ -172,20 +172,15 @@ impl Scrapbot {
         spy_glass.new_discover(self, world);
     }
 
-    pub fn lssf_update(
-        &mut self,
-        world: &mut World,
-        input_radius: Option<usize>,
-    ) {
+    pub fn lssf_update(&mut self, world: &mut World, input_radius: Option<usize>) {
         self.full_recharge();
-        println!("lssf update called");
         // Use the specified radius if provided, otherwise use default (1/8 of map size)
         // or the nearest border distance so that the tool doesn't shit itself
 
         let world_dim = robot_map(world).unwrap().len();
         let mut scan_diameter = input_radius.unwrap_or(world_dim / 4);
 
-        println!("proposed scan diameter {}", scan_diameter);
+        print!("proposed scan diameter {} | ", scan_diameter);
         scan_diameter = min(
             Self::round_down_to_nearest_odd(scan_diameter),
             Self::round_down_to_nearest_odd(self.nearest_border_distance(world) * 2),
@@ -196,12 +191,12 @@ impl Scrapbot {
 
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();
-        lssf.smart_sensing_centered(scan_diameter, world, self, 0).ok();
+        lssf.smart_sensing_centered(scan_diameter, world, self, 0)
+            .ok();
         // self.spyglass_explore(world);
         // lssf.update_map(&robot_map(world).unwrap());
 
         self.lssf = Some(lssf);
-
 
         // Return result
         // match result {
@@ -243,6 +238,14 @@ impl Scrapbot {
             self.trash_coords = coords_vec_to_be_ordered;
         } else {
             self.bin_coords = coords_vec_to_be_ordered;
+        }
+    }
+
+    pub(crate) fn valid_lssf_coords(&self, col: usize, row: usize) -> bool {
+        let action_vec = self.lssf.as_ref().unwrap().get_action_vec(col, row);
+        match action_vec {
+            Ok(actions) => !actions.is_empty(),
+            Err(_) => false,
         }
     }
 }

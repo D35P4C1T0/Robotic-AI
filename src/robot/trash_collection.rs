@@ -71,8 +71,8 @@ impl Scrapbot {
         self.full_recharge(); // because why not
 
         let mut requirements = HashMap::new(); // Insert all your requirements in here
-        // requirements.insert(Content::Garbage(0), quantity);
-        // insert garbage from 0 to 20
+                                               // requirements.insert(Content::Garbage(0), quantity);
+                                               // insert garbage from 0 to 20
         for i in 0..20 {
             requirements.insert(Content::Garbage(i), 0);
         }
@@ -125,7 +125,7 @@ impl Scrapbot {
     }
     pub(crate) fn lssf_search_bins(&mut self, world: &mut World) -> Result<bool, LibError> {
         self.lssf_update(world, None);
-        
+
         let bin_found = self
             .lssf
             .as_ref()

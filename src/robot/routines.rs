@@ -1,5 +1,3 @@
-use robotics_lib::event::events::Event::Terminated;
-use robotics_lib::runner::Runnable;
 use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::World;
@@ -44,7 +42,7 @@ impl Scrapbot {
                 return Ok(RoutineResult::FilledBackpack);
             }
 
-            self.populate_action_vec_given_point(*coords);
+            self.populate_action_vec_given_point(world, *coords);
             self.run_action_vec_and_then(world, BotAction::Walk)?;
 
             match self.collect_new_trash_fill_backpack(world) {
@@ -107,10 +105,15 @@ impl Scrapbot {
         let mut bad_bins_vec = vec![];
 
         for coords in &bin_coords {
-            self.populate_action_vec_given_point(*coords);
-            self.run_action_vec_and_then(world, BotAction::Walk)?;
+            self.populate_action_vec_given_point(world, *coords);
+            self.run_action_vec_and_then(world, BotAction::Put)?;
 
-            match self.drop_trash_into_bin_in_front_of(world, self.get_last_move_direction()) {
+            let last_move_direction = self.get_last_move_direction();
+            if last_move_direction.is_none() {
+                return Err(LibError::OperationNotAllowed);
+            }
+
+            match self.drop_trash_into_bin_in_front_of(world, last_move_direction.unwrap()) {
                 Ok(0) => {
                     println!("Dropped no trash, sadly found bin full");
                     println!("Removing bin at {}{} from list", coords.0, coords.1);
@@ -154,7 +157,7 @@ impl Scrapbot {
         let new_location = self.next_quadrant_clockwise(world);
         println!("Wandering to {:?}", new_location);
 
-        self.populate_action_vec_given_point(new_location);
+        self.populate_action_vec_given_point(world, new_location);
         self.run_action_vec_and_then(world, BotAction::Walk)
             .map(|_| RoutineResult::Success)
             .map_err(|err| {
@@ -168,12 +171,17 @@ impl Scrapbot {
         world: &mut World,
     ) -> Result<RoutineResult, LibError> {
         self.full_recharge();
+
+        if self.move_away_from_border(world) {
+            return Ok(RoutineResult::Success);
+        }
+
         self.lssf_update(world, None);
         let next_location = self.find_closest_undiscovered_tile(world);
         println!("Wandering to undiscovered tile at {:?}", next_location);
         match next_location {
             Some(location) => {
-                self.populate_action_vec_given_point(location);
+                self.populate_action_vec_given_point(world, location);
                 self.run_action_vec_and_then(world, BotAction::Walk)
                     .map(|_| RoutineResult::Success)
                     .map_err(|err| {
@@ -189,11 +197,11 @@ impl Scrapbot {
     }
 
     pub(crate) fn routine(&mut self, world: &mut World) {
-        if self.quadrants_visited.values().all(|&v| v) {
-            println!("All quadrants visited, stopping");
-            self.handle_event(Terminated);
-            return;
-        }
+        // if self.quadrants_visited.values().all(|&v| v) {
+        //     println!("All quadrants visited, stopping");
+        //     self.handle_event(Terminated);
+        //     return;
+        // }
 
         // Initialize vectors if they are not set
         self.actions_vec.get_or_insert_with(Vec::new);
@@ -210,7 +218,10 @@ impl Scrapbot {
         {
             if let Ok(result) = self.routine_collect_trash(world) {
                 match result {
-                    RoutineResult::Success => { println!("Trash collected"); self.handle_full_backpack(world) },
+                    RoutineResult::Success => {
+                        println!("Trash collected");
+                        self.handle_full_backpack(world)
+                    }
                     RoutineResult::NewResourcesNotFound => self.handle_wandering(world),
                     RoutineResult::FilledBackpack => self.handle_full_backpack(world),
                     _ => println!("Error planning next task"),
@@ -237,8 +248,11 @@ impl Scrapbot {
 
     fn handle_full_backpack(&mut self, world: &mut World) {
         match self.routine_empty_trash(world) {
-            Ok(RoutineResult::Success) => println!("Trash dropped"),
-            Ok(RoutineResult::EmptyBackpack) => println!("Backpack is empty"),
+            Ok(RoutineResult::Success) => {
+                println!("Trash dropped");
+                self.handle_wandering(world)
+            }
+            Ok(RoutineResult::EmptyBackpack) => self.handle_wandering(world),
             Ok(RoutineResult::NewResourcesNotFound) => self.handle_wandering(world),
             _ => println!("Error planning next task"),
         }
