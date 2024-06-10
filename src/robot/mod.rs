@@ -42,7 +42,6 @@ pub struct Scrapbot {
     pub audio: Option<OxAgAudioTool>,
     pub bin_coords: Option<Vec<(usize, usize)>>,
     pub trash_coords: Option<Vec<(usize, usize)>>,
-    pub ticks: usize,
     pub lssf: Option<Lssf>,
     pub actions_vec: Option<Vec<Action>>,
     pub bot_action: BotAction,
@@ -65,7 +64,6 @@ impl Scrapbot {
             ),
             bin_coords: None,
             trash_coords: None,
-            ticks: 0,
             lssf: Some(Lssf::new()),
             actions_vec: None,
             bot_action: BotAction::Start,
@@ -181,16 +179,14 @@ impl Scrapbot {
         // Use the specified radius if provided, otherwise use default (1/8 of map size)
         // or the nearest border distance so that the tool doesn't shit itself
         let world_dim = robot_map(world).unwrap().len();
-        let mut radius = input_radius.unwrap_or(world_dim / 8);
-        radius = min(self.nearest_border_distance(world), radius);
+        let radius = input_radius.unwrap_or(world_dim / 8);
+
         println!("nearest border: {}", self.nearest_border_distance(world));
         println!("radius: {}", radius);
 
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();
-        let result = lssf.smart_sensing_centered(radius, world, self, world_dim - 1);
-        lssf.update_map(robot_map(world).unwrap().as_ref());
-        println!("pre update valid_offset: {}", lssf.is_offset_valid());
+        let result = lssf.smart_sensing_centered(radius, world, self, 5);
         self.lssf = Some(lssf);
 
         // Return result

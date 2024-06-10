@@ -18,6 +18,46 @@ fn valid_coords(x: i32, y: i32, map_size: i32) -> bool {
 }
 
 impl Scrapbot {
+    pub(crate) fn go_to_map_center_and_update_lssf(
+        &mut self,
+        world: &mut World,
+    ) -> Result<(), LibError> {
+        let map_size = robot_map(world).unwrap().len();
+        let center = map_size / 2;
+
+        // Get the current coordinates of the robot
+        let (robot_x, robot_y) = (
+            self.get_coordinate().get_col(),
+            self.get_coordinate().get_row(),
+        );
+
+        // Calculate the number of moves needed in each direction
+        let (horizontal_moves, horizontal_direction) = if robot_x < center {
+            (center - robot_x, Direction::Right)
+        } else {
+            (robot_x - center, Direction::Left)
+        };
+
+        let (vertical_moves, vertical_direction) = if robot_y < center {
+            (center - robot_y, Direction::Down)
+        } else {
+            (robot_y - center, Direction::Up)
+        };
+
+        // Move horizontally
+        for _ in 0..horizontal_moves {
+            go(self, world, horizontal_direction.clone())?;
+        }
+
+        // Move vertically
+        for _ in 0..vertical_moves {
+            go(self, world, vertical_direction.clone())?;
+        }
+
+        // Uncomment the line below to update LSSF
+        self.lssf_update(world, Some(robot_map(world).unwrap().len()))
+    }
+
     pub(crate) fn nearest_border_distance(&self, world: &World) -> usize {
         let robot_pos = self.get_coordinate();
         // Assumiamo che robot_map(world) restituisca una griglia quadrata,
@@ -108,7 +148,6 @@ impl Scrapbot {
     ) -> Result<usize, LibError> {
         // Run the actions vector if it exists
         if let Some(mut actions) = self.actions_vec.take() {
-
             // check if the action vector is empty
             if actions.is_empty() {
                 println!("No actions to perform");
@@ -189,9 +228,9 @@ impl Scrapbot {
         let map_side = robot_map(world).unwrap().len();
         let quadrants_centers = [
             (map_side / 4, map_side / 4),
-            ((map_side / 4)*3, map_side / 4),
+            ((map_side / 4) * 3, map_side / 4),
             ((map_side / 4) * 3, (map_side / 4) * 3),
-            (map_side / 4, (map_side / 4)*3),
+            (map_side / 4, (map_side / 4) * 3),
         ]; // col,row
 
         // 1 | 2
