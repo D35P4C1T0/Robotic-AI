@@ -112,7 +112,7 @@ impl Scrapbot {
 
         while let Some((x_u, y_u)) = queue.pop_front() {
             if is_undiscovered_tile(&known_map, x_u, y_u) {
-                return Some((x_u, y_u));
+                return Some((y_u, x_u));
             }
 
             for (dx, dy) in &[(1, 0), (-1, 0), (0, 1), (0, -1)] {
