@@ -166,6 +166,7 @@ impl Scrapbot {
         world: &mut World,
     ) -> Result<RoutineResult, LibError> {
         self.full_recharge();
+        self.lssf_update(world, None)?;
         let next_location = self.bfs_find_closest_undiscovered_tile(world);
         println!("Wandering to undiscovered tile at {:?}", next_location);
         match next_location {

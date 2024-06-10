@@ -179,7 +179,8 @@ impl Scrapbot {
         // Use the specified radius if provided, otherwise use default (1/8 of map size)
         // or the nearest border distance so that the tool doesn't shit itself
         let world_dim = robot_map(world).unwrap().len();
-        let radius = input_radius.unwrap_or(world_dim / 8);
+        let mut radius = input_radius.unwrap_or(world_dim / 8);
+        radius = min(radius, self.nearest_border_distance(world));
 
         println!("nearest border: {}", self.nearest_border_distance(world));
         println!("radius: {}", radius);
