@@ -26,36 +26,30 @@ impl Scrapbot {
         let min_distance = 4;
         let mut moved = true;
 
-        // coords are (x,y)
-        // (0,0) is top left
-
         let mut moves_stack: Vec<Direction> = vec![];
 
-        if robot_x < min_distance {
-            //top
-            for _ in 0..min_distance {
-                moves_stack.push(Direction::Right);
+        match (
+            robot_x < min_distance,
+            robot_y < min_distance,
+            robot_y >= map_size - min_distance,
+            robot_x >= map_size - min_distance,
+        ) {
+            (true, false, false, false) => {
+                moves_stack.extend(std::iter::repeat(Direction::Right).take(min_distance))
             }
-        } else if robot_y < min_distance {
-            //right
-            for _ in 0..min_distance {
-                moves_stack.push(Direction::Down);
+            (false, true, false, false) => {
+                moves_stack.extend(std::iter::repeat(Direction::Down).take(min_distance))
             }
-        } else if robot_y >= map_size - min_distance {
-            //down
-            for _ in 0..min_distance {
-                moves_stack.push(Direction::Up);
+            (false, false, true, false) => {
+                moves_stack.extend(std::iter::repeat(Direction::Up).take(min_distance))
             }
-        } else if robot_x >= map_size - min_distance {
-            //left
-            for _ in 0..min_distance {
-                moves_stack.push(Direction::Left);
+            (false, false, false, true) => {
+                moves_stack.extend(std::iter::repeat(Direction::Left).take(min_distance))
             }
-        } else {
-            moved = false;
+            _ => moved = false,
         }
 
-        for direction in moves_stack {
+        for direction in &moves_stack {
             go(self, world, direction.clone()).ok();
             print!("Moved away from border, {:?} | ", direction);
         }
@@ -63,6 +57,41 @@ impl Scrapbot {
         self.lssf_update(world, Some(min_distance * 2));
 
         moved
+    }
+
+    pub(crate) fn move_to_center(&mut self, world: &mut World) {
+        let map_size = robot_map(world).unwrap().len();
+        let robot_pos = self.get_coordinate();
+        let (robot_x, robot_y) = (robot_pos.get_col(), robot_pos.get_row());
+        let center = map_size / 2;
+
+        let mut moves_stack: Vec<Direction> = vec![];
+
+        match (robot_x < center, robot_y < center) {
+            (true, true) => {
+                moves_stack.extend(std::iter::repeat(Direction::Right).take(center - robot_x));
+                moves_stack.extend(std::iter::repeat(Direction::Down).take(center - robot_y));
+            }
+            (true, false) => {
+                moves_stack.extend(std::iter::repeat(Direction::Right).take(center - robot_x));
+                moves_stack.extend(std::iter::repeat(Direction::Up).take(robot_y - center));
+            }
+            (false, true) => {
+                moves_stack.extend(std::iter::repeat(Direction::Left).take(robot_x - center));
+                moves_stack.extend(std::iter::repeat(Direction::Down).take(center - robot_y));
+            }
+            (false, false) => {
+                moves_stack.extend(std::iter::repeat(Direction::Left).take(robot_x - center));
+                moves_stack.extend(std::iter::repeat(Direction::Up).take(robot_y - center));
+            }
+        }
+
+        for direction in &moves_stack {
+            go(self, world, direction.clone()).ok();
+            print!("Moved to center, {:?} | ", direction);
+        }
+
+        self.lssf_update(world, Some((center * 2) - 1));
     }
 
     pub(crate) fn nearest_border_distance(&self, world: &World) -> usize {

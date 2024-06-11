@@ -197,6 +197,7 @@ impl Scrapbot {
         // lssf.update_map(&robot_map(world).unwrap());
 
         self.lssf = Some(lssf);
+        self.store_tiles(world);
 
         // Return result
         // match result {

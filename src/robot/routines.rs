@@ -173,6 +173,7 @@ impl Scrapbot {
         self.full_recharge();
 
         if self.move_away_from_border(world) {
+            self.move_to_center(world);
             return Ok(RoutineResult::Success);
         }
 

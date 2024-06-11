@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use pmp_collect_all::CollectAll;
+use robot_for_visualizer::RobotForVisualizer;
 use robotics_lib::interface::{destroy, put, robot_map, Direction};
 use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
@@ -52,6 +53,7 @@ impl Scrapbot {
         ) {
             Ok(quantity) => {
                 println!("trash dropped");
+                self.store_tiles(world);
                 Ok(quantity)
             }
             Err(err) => {
