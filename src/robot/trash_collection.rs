@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use pmp_collect_all::CollectAll;
 use robot_for_visualizer::RobotForVisualizer;
-use robotics_lib::interface::{destroy, put, robot_map, Direction};
+use robotics_lib::interface::{destroy, put, Direction};
 use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::World;
@@ -18,14 +18,8 @@ impl Scrapbot {
     ) -> Result<usize, LibError> {
         let result = destroy(self, world, direction);
         match result {
-            Ok(quantity) => {
-                println!("Collected {} trash", quantity);
-                Ok(quantity)
-            }
-            Err(err) => {
-                println!("Error destroying: {:?}", err);
-                Err(err)
-            }
+            Ok(quantity) => Ok(quantity),
+            Err(err) => Err(err),
         }
     }
 
@@ -42,8 +36,6 @@ impl Scrapbot {
             // trash to drop from the backpack
         }
 
-        let content = Content::Garbage(0);
-        println!("putting content of type: {:?}", content);
         match put(
             self,
             world,
@@ -52,14 +44,10 @@ impl Scrapbot {
             direction.clone(),
         ) {
             Ok(quantity) => {
-                println!("trash dropped");
                 self.store_tiles(world);
                 Ok(quantity)
             }
-            Err(err) => {
-                println!("Error dropping trash: {:?}", err);
-                Err(err)
-            }
+            Err(err) => Err(err),
         }
     }
 
@@ -68,7 +56,6 @@ impl Scrapbot {
         &mut self,
         world: &mut World,
         range: usize,
-        quantity: usize,
     ) -> Result<usize, LibError> {
         self.full_recharge(); // because why not
 
@@ -95,10 +82,8 @@ impl Scrapbot {
         &mut self,
         world: &mut World,
     ) -> Result<usize, LibError> {
-        let free_backpack_space = self.get_remaining_backpack_space();
-        // let portion_of_map = (robot_map(world).unwrap().len() / 100) * 15;
-        let range = 10;
-        self.collect_new_trash(world, range, free_backpack_space)
+        let range = 15;
+        self.collect_new_trash(world, range)
     }
     pub(crate) fn lssf_search_trash(&mut self, world: &mut World) -> Result<bool, LibError> {
         self.lssf_update(world, None);

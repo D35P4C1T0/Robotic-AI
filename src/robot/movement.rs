@@ -51,7 +51,7 @@ impl Scrapbot {
 
         for direction in &moves_stack {
             go(self, world, direction.clone()).ok();
-            print!("Moved away from border, {:?} | ", direction);
+            // print!("Moved away from border, {:?} | ", direction);
         }
 
         self.lssf_update(world, Some(min_distance * 2));
@@ -88,7 +88,7 @@ impl Scrapbot {
 
         for direction in &moves_stack {
             go(self, world, direction.clone()).ok();
-            print!("Moved to center, {:?} | ", direction);
+            // print!("Moved to center, {:?} | ", direction);
         }
 
         self.lssf_update(world, Some((center * 2) - 1));
@@ -230,11 +230,11 @@ impl Scrapbot {
         match old_lssf.get_action_vec(coordinate.0, coordinate.1) {
             // col(x), row(y)
             Ok(actions) => {
-                println!("Populated action vec!: {:?}", actions);
+                // println!("Populated action vec!: {:?}", actions);
                 self.actions_vec = Some(actions);
             }
-            Err(err) => {
-                println!("Error planning next move to: {:?} | {:?}", coordinate, err);
+            Err(_) => {
+                // println!("Error planning next move to: {:?} | {:?}", coordinate, err);
             }
         }
         self.lssf = Some(old_lssf);
@@ -248,7 +248,7 @@ impl Scrapbot {
         if let Some(mut actions) = self.actions_vec.take() {
             // check if the action vector is empty
             if actions.is_empty() {
-                println!("No actions to perform");
+                // println!("No actions to perform");
                 return Err(LibError::CannotWalk);
             }
 
@@ -309,14 +309,8 @@ impl Scrapbot {
             };
 
             match result {
-                Ok(q) => {
-                    println!("Processed {} trash", q);
-                    Ok(q)
-                }
-                Err(err) => {
-                    println!("Error processing action: {:?}", err);
-                    Err(err)
-                }
+                Ok(q) => Ok(q),
+                Err(err) => Err(err),
             }
         } else {
             Ok(0)
@@ -334,49 +328,5 @@ impl Scrapbot {
             Action::West => Some(Direction::Left),
             _ => None, // hope it doesnt get here
         }
-    }
-
-    pub(crate) fn next_quadrant_clockwise(&mut self, world: &mut World) -> (usize, usize) {
-        let map_side = robot_map(world).unwrap().len();
-        let quadrants_centers = [
-            (map_side / 4, map_side / 4),
-            ((map_side / 4) * 3, map_side / 4),
-            ((map_side / 4) * 3, (map_side / 4) * 3),
-            (map_side / 4, (map_side / 4) * 3),
-        ]; // col,row
-
-        // 1 | 2
-        // -----
-        // 4 | 3
-        // clockwise
-
-        let (bot_col, bot_row) = (
-            self.get_coordinate().get_col(),
-            self.get_coordinate().get_row(),
-        );
-
-        let bot_location_quadrant: usize = match (bot_row <= map_side / 2, bot_col <= map_side / 2)
-        {
-            (true, true) => 1,
-            (true, false) => 2,
-            (false, false) => 3,
-            (false, true) => 4,
-        };
-
-        // mark current quadrant as visited
-        self.quadrants_visited
-            .entry(bot_location_quadrant)
-            .and_modify(|e| *e = true)
-            .or_insert(true);
-
-        let next_quadrant = match bot_location_quadrant {
-            1 => 2,
-            2 => 3,
-            3 => 4,
-            4 => 1,
-            _ => 1,
-        };
-
-        quadrants_centers[next_quadrant - 1]
     }
 }

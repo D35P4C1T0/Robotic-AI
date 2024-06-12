@@ -20,7 +20,6 @@ use spyglass::spyglass::Spyglass;
 use crate::robot::sound::{populate_sounds, populate_sounds_given_path};
 
 mod movement;
-mod print;
 mod routines;
 mod sound;
 mod trash_collection;
@@ -101,58 +100,6 @@ impl Scrapbot {
         }
     }
 
-    // unused, yet
-    pub fn work_done(&mut self, world: &mut World) -> bool {
-        let mut is_work_done = false;
-        //number of unexplored tiles
-        let mut none_num = 0;
-        let threshold = 0.20;
-        if let Some(known_map) = robot_map(world) {
-            let size = known_map.len();
-
-            known_map.iter().for_each(|row| {
-                row.iter().for_each(|tile| {
-                    if tile.is_none() {
-                        none_num += 1;
-                    }
-                });
-            });
-
-            if (none_num as f64) / ((size * size) as f64) < threshold {
-                //checks if there are still trash in the world if not it returns that the
-                //job of the robot is done
-                self.lssf_update(world, None);
-
-                let old_lssf = self.lssf.take().unwrap();
-                let next_trash_location = old_lssf.get_content_vec(&Garbage(0));
-                match !next_trash_location.is_empty() {
-                    true => {
-                        is_work_done = false;
-                    }
-                    false => {
-                        is_work_done = true;
-                    }
-                }
-                self.lssf = Some(old_lssf);
-
-                if self.trash_coords.is_none() {
-                    // prima inizializzazione
-                    let old_lssf = self.lssf.take().unwrap();
-                    self.trash_coords = Some(old_lssf.get_content_vec(&Garbage(0)));
-                    self.lssf = Some(old_lssf);
-                } else if self.trash_coords.as_ref().unwrap().is_empty() {
-                    // trash_points esauriti
-                    // self.must_find_new_trash = true;
-                    if self.bin_coords.is_some() && self.bin_coords.as_ref().unwrap().is_empty() {
-                        // finiti i bin
-                        is_work_done = true;
-                    }
-                }
-            }
-        }
-        is_work_done
-    }
-
     // map exploration methods
     pub fn spyglass_explore(&mut self, world: &mut World) {
         //println!("spyglass exploration");
@@ -180,39 +127,19 @@ impl Scrapbot {
         let world_dim = robot_map(world).unwrap().len();
         let mut scan_diameter = input_radius.unwrap_or(world_dim / 4);
 
-        print!("proposed scan diameter {} | ", scan_diameter);
+        // print!("proposed scan diameter {} | ", scan_diameter);
         scan_diameter = min(
             Self::round_down_to_nearest_odd(scan_diameter),
             Self::round_down_to_nearest_odd(self.nearest_border_distance(world) * 2),
         );
 
-        // println!("nearest border: {}", self.nearest_border_distance(world));
-        println!("scan diameter: {}", scan_diameter);
-
         // Update LSSF
         let mut lssf = self.lssf.take().unwrap();
         lssf.smart_sensing_centered(scan_diameter, world, self, 0)
             .ok();
-        // self.spyglass_explore(world);
-        // lssf.update_map(&robot_map(world).unwrap());
 
         self.lssf = Some(lssf);
         self.store_tiles(world);
-
-        // Return result
-        // match result {
-        //     Ok(_) => Ok(()),
-        //     Err(err) => {
-        //         println!("Error updating LSSF: {:?}", err);
-        //         Err(err)
-        //     }
-        // }
-    }
-
-    pub fn use_discovery_tools(&mut self, world: &mut World) {
-        // to be used when the robot is stuck or at first start
-        self.full_recharge();
-        self.spyglass_explore(world);
     }
 
     pub fn util_sort_points_from_nearest(&mut self, content: Content) {
@@ -259,8 +186,6 @@ impl Runnable for Scrapbot {
         self.store_tiles(world);
     }
     fn handle_event(&mut self, event: Event) {
-        // let mut update_events = events.lock().unwrap();
-        // update_events.push(event.clone());
         self.store_event(event);
     }
     fn get_energy(&self) -> &Energy {
